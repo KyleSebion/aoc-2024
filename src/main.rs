@@ -382,12 +382,12 @@ fn find_loops(d: &str) -> usize {
         if m.map[i].space == '.' {
             m.map[i] = MapSpace::new('#');
             loop {
-                let (keep_going, loop_detected) = m.move_guard();
+                let (is_done, loop_detected) = m.move_guard();
                 if loop_detected {
                     loops += 1;
                     break;
                 }
-                if !keep_going {
+                if !is_done {
                     break;
                 }
             }
@@ -395,22 +395,22 @@ fn find_loops(d: &str) -> usize {
     }
     loops
 }
-fn print_thread(se: char, tn: usize, procs: usize, m: &Mutex<usize>) {
+fn print_thread(se: char, tn: usize, procs: &usize, m: &Mutex<usize>) {
     print!("{se}{tn} ");
     let mut g = m.lock().unwrap();
     *g += 1;
-    if *g == procs {
+    if *g == *procs {
         *g = 0;
         println!(" ");
     }
 }
 fn find_loops_mt(d: &str) -> isize {
     let m = &Mutex::new(0);
-    let procs = std::thread::available_parallelism().unwrap().get();
+    let procs = &std::thread::available_parallelism().unwrap().get();
     let map_len = &Map::new(d).map.len();
     let map_span = &(map_len / procs);
     thread::scope(|s| {
-        (0..procs)
+        (0..*procs)
             .map(|tn| {
                 s.spawn(move || {
                     print_thread('S', tn, procs, m);
@@ -420,12 +420,12 @@ fn find_loops_mt(d: &str) -> isize {
                         if m.map[i].space == '.' {
                             m.map[i] = MapSpace::new('#');
                             loop {
-                                let (keep_going, loop_detected) = m.move_guard();
+                                let (is_done, loop_detected) = m.move_guard();
                                 if loop_detected {
                                     loops += 1;
                                     break;
                                 }
-                                if !keep_going {
+                                if !is_done {
                                     break;
                                 }
                             }
