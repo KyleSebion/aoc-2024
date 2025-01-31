@@ -1,9 +1,8 @@
 use std::{
-    sync::atomic::AtomicU32,
+    sync::atomic::{AtomicU32, Ordering},
     thread,
     time::{Duration, Instant},
 };
-use std::sync::atomic::Ordering;
 
 fn get_p1_test_data() -> &'static str {
     "\
