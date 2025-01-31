@@ -1,5 +1,5 @@
 use std::{
-    sync::atomic::{AtomicU32, Ordering},
+    sync::Mutex,
     thread,
     time::{Duration, Instant},
 };
@@ -395,25 +395,27 @@ fn find_loops(d: &str) -> usize {
     }
     loops
 }
+fn print_thread(se: char, tn: usize, procs: usize, m: &Mutex<usize>) {
+    print!("{se}{tn} ");
+    let mut g = m.lock().unwrap();
+    *g += 1;
+    if *g == procs {
+        *g = 0;
+        println!(" ");
+    }
+}
 fn find_loops_mt(d: &str) -> isize {
-    let tc = &AtomicU32::new(1);
+    let m = &Mutex::new(0);
     let procs = std::thread::available_parallelism().unwrap().get();
     let map_len = &Map::new(d).map.len();
     let map_span = &(map_len / procs);
     thread::scope(|s| {
-        let mut loops = 0;
-        let ts = (0..procs)
-            .map(|pn| {
+        (0..procs)
+            .map(|tn| {
                 s.spawn(move || {
-                    print!("S{pn} ");
-                    let c = tc.fetch_add(1, Ordering::Relaxed);
-                    if c == procs as u32 {
-                        println!(" ");
-                    }
-                    let s = pn * map_span;
-                    let e = s + map_span;
+                    print_thread('S', tn, procs, m);
                     let mut loops = 0;
-                    for i in s..e {
+                    for i in (tn * map_span)..(tn * map_span + map_span) {
                         let mut m = Map::new(d);
                         if m.map[i].space == '.' {
                             m.map[i] = MapSpace::new('#');
@@ -429,16 +431,14 @@ fn find_loops_mt(d: &str) -> isize {
                             }
                         }
                     }
-                    print!("E{pn} ");
+                    print_thread('E', tn, procs, m);
                     loops
                 })
             })
-            .collect::<Vec<_>>();
-        for t in ts {
-            loops += t.join().unwrap();
-        }
-        println!(" ");
-        loops
+            .collect::<Vec<_>>()
+            .into_iter()
+            .map(|jh| jh.join().unwrap())
+            .sum()
     })
 }
 fn p2(l: usize) {
