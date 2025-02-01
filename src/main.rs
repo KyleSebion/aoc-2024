@@ -1,5 +1,4 @@
-use std::{iter, time::Instant};
-
+use std::time::Instant;
 #[allow(dead_code)]
 fn get_ex() -> &'static str {
     "\
@@ -894,9 +893,9 @@ fn get_tot_calib_res_p1(d: &str) -> usize {
     }
     total_res
 }
-fn inc_trits(trits: &mut Vec<usize>) -> bool {
+fn inc_trits(trits: &mut [usize]) -> bool {
     for trit in trits {
-        if trit == &2 {
+        if *trit == 2 {
             *trit = 0;
         } else {
             *trit += 1;
@@ -915,7 +914,7 @@ fn get_tot_calib_res_p2(d: &str) -> usize {
             s[r].parse::<usize>().unwrap()
         }).collect::<Vec<_>>();
         let [expected_res, operands @ ..] = &v[..] else { panic!("{l} unexpected!") };
-        let mut trits = iter::repeat(0_usize).take(operands.len()-1).collect::<Vec<_>>();
+        let trits = &mut vec![0; operands.len() - 1];
         loop {
             let mut calc_res = operands[0];
             for (i, operand) in operands[1..].iter().enumerate() {
@@ -930,7 +929,7 @@ fn get_tot_calib_res_p2(d: &str) -> usize {
                 total_res += calc_res;
                 break;
             }
-            if !inc_trits(&mut trits) { break; }
+            if !inc_trits(trits) { break; }
         }
     }
     total_res
@@ -980,16 +979,16 @@ pub mod tests {
     #[test] fn p2_ex_radix_fmt() { assert_eq!(11387, super_slow_get_tot_calib_res_p2_radix_fmt(get_ex())); }
     #[test] fn p2() { assert_eq!(38322057216320, get_tot_calib_res_p2(get_data())); }
     #[test] fn test_trits() {
-        let mut trits = iter::repeat(0_usize).take(2).collect::<Vec<_>>();
-        assert_eq!(trits, vec![0, 0]); assert!(inc_trits(&mut trits));
-        assert_eq!(trits, vec![1, 0]); assert!(inc_trits(&mut trits));
-        assert_eq!(trits, vec![2, 0]); assert!(inc_trits(&mut trits));
-        assert_eq!(trits, vec![0, 1]); assert!(inc_trits(&mut trits));
-        assert_eq!(trits, vec![1, 1]); assert!(inc_trits(&mut trits));
-        assert_eq!(trits, vec![2, 1]); assert!(inc_trits(&mut trits));
-        assert_eq!(trits, vec![0, 2]); assert!(inc_trits(&mut trits));
-        assert_eq!(trits, vec![1, 2]); assert!(inc_trits(&mut trits));
-        assert_eq!(trits, vec![2, 2]); assert!(!inc_trits(&mut trits));
-        assert_eq!(trits, vec![0, 0]); 
+        let trits = &mut vec![0; 2];
+        assert_eq!(trits, &mut vec![0, 0]); assert!(inc_trits(trits));
+        assert_eq!(trits, &mut vec![1, 0]); assert!(inc_trits(trits));
+        assert_eq!(trits, &mut vec![2, 0]); assert!(inc_trits(trits));
+        assert_eq!(trits, &mut vec![0, 1]); assert!(inc_trits(trits));
+        assert_eq!(trits, &mut vec![1, 1]); assert!(inc_trits(trits));
+        assert_eq!(trits, &mut vec![2, 1]); assert!(inc_trits(trits));
+        assert_eq!(trits, &mut vec![0, 2]); assert!(inc_trits(trits));
+        assert_eq!(trits, &mut vec![1, 2]); assert!(inc_trits(trits));
+        assert_eq!(trits, &mut vec![2, 2]); assert!(!inc_trits(trits));
+        assert_eq!(trits, &mut vec![0, 0]); 
     }
 }
