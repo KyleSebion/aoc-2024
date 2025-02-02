@@ -116,12 +116,29 @@ fn defrag_disk_p2(d: &mut [usize]) -> Option<()> {
     }
 }
 fn main() {
-    let s = Instant::now();
-    let mut d = mk_disk(get_data());
-    defrag_disk_p2(&mut d);
-    let cs = get_disk_checksum(&d);
-    let d = s.elapsed();
-    println!("{cs} {d:?}");
+    let r = 0..200;
+    let r_len = r.len() as f64;
+    let mut ms = Vec::with_capacity(r.len());
+    for _ in r {
+        let s = Instant::now();
+        let mut d = mk_disk(get_data());
+        defrag_disk_p2(&mut d);
+        let _ = get_disk_checksum(&d);
+        let d = s.elapsed();
+        ms.push(d.as_secs_f64() * 1000_f64);
+    }
+    print!(
+        "\
+min ms: {:.1}
+avg ms: {:.1}
+max ms: {:.1}
+tot ms: {:.0}
+",
+        ms.clone().into_iter().reduce(f64::min).unwrap(),
+        ms.clone().into_iter().sum::<f64>() / r_len,
+        ms.clone().into_iter().reduce(f64::max).unwrap(),
+        ms.clone().into_iter().sum::<f64>(),
+    );
 }
 #[cfg(test)]
 pub mod tests {
