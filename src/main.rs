@@ -93,15 +93,13 @@ fn analyze_disk(d: &[usize]) -> (Vec<RangeInclusive<usize>>, Vec<RangeInclusive<
 fn get_range_len(r: &RangeInclusive<usize>) -> usize {
     r.end() - r.start() + 1
 }
-fn defrag_disk_p2(d: &mut [usize]) {
+fn defrag_disk_p2(d: &mut [usize]) -> Option<()> {
     let (mut free, mut used) = analyze_disk(d);
-    while let Some(u) = used.pop() {
-        if let Some(rm) = free.iter().rposition(|f| f.start() < u.start()) {
-            if rm + 1 < free.len() {
-                free.drain(rm + 1..free.len());
-            }
-        } else {
-            break;
+    loop {
+        let u = used.pop()?;
+        let rm_start = free.iter().rposition(|f| f.start() < u.start())? + 1;
+        if rm_start < free.len() {
+            free.drain(rm_start..);
         }
         let u_len = get_range_len(&u);
         if let Some(fi) = free.iter().position(|f| get_range_len(f) >= u_len) {
