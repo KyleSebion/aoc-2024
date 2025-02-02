@@ -95,14 +95,16 @@ fn get_range_len(r: &RangeInclusive<usize>) -> usize {
 }
 fn defrag_disk_p2(d: &mut [usize]) {
     let (mut free, mut used) = analyze_disk(d);
-    let mut i = 0;
-    let retain_mul = std::cmp::max(2, used.len() / 64);
     while let Some(u) = used.pop() {
-        if i % retain_mul == 0 {
-            free.retain(|f| f.start() < u.start());
+        if let Some(rm) = free.iter().rposition(|f| f.start() < u.start()) {
+            if rm + 1 < free.len() {
+                free.drain(rm + 1..free.len());
+            }
+        } else {
+            break;
         }
         let u_len = get_range_len(&u);
-        if let Some(fi) = free.iter().position(|f| get_range_len(f) >= u_len && f.start() < u.start()) {
+        if let Some(fi) = free.iter().position(|f| get_range_len(f) >= u_len) {
             let f = if get_range_len(&free[fi]) == u_len {
                 free.remove(fi)
             } else {
@@ -114,7 +116,6 @@ fn defrag_disk_p2(d: &mut [usize]) {
             let (l, r) = d.split_at_mut(*u.start());
             l[f].swap_with_slice(&mut r[0..u_len]);
         }
-        i += 1;
     }
 }
 fn main() {
