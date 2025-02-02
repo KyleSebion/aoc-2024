@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use std::{ops::RangeInclusive, time::Instant};
+use std::{ops::Range, time::Instant};
 
 #[allow(dead_code)]
 fn get_p1_ex1() -> &'static str {
@@ -31,7 +31,7 @@ fn mk_disk(d: &str) -> Vec<usize> {
     let mut f = true;
     let mut id = 0;
     for c in d.chars() {
-        let d = c.to_digit(10).unwrap();
+        let d = c.to_digit(10).expect("digit");
         for _ in 0..d {
             if f {
                 v.push(id);
@@ -75,43 +75,42 @@ fn get_disk_checksum(d: &[usize]) -> usize {
         .map(|(i, v)| if *v == FREE_BLOCK { 0 } else { i * *v })
         .sum()
 }
-fn analyze_disk(d: &[usize]) -> (Vec<RangeInclusive<usize>>, Vec<RangeInclusive<usize>>) {
+fn analyze_disk(d: &[usize]) -> (Vec<Range<usize>>, Vec<Range<usize>>) {
     let mut free = vec![];
     let mut used = vec![];
     for (k, v) in &d.iter().enumerate().chunk_by(|(_, &v)| v) {
-        let v = v.collect::<Vec<_>>();
-        let s = v[0].0;
-        let e = v[v.len() - 1].0;
+        let r = match v.collect::<Vec<_>>()[..] {
+            [] => panic!("empty not possible since chunk must have at least a size of 1"),
+            [(s, _)] => s..s + 1,
+            [(s, _), .., (e, _)] => s..e + 1,
+        };
         if k == FREE_BLOCK {
-            free.push(s..=e);
+            free.push(r);
         } else {
-            used.push(s..=e);
+            used.push(r);
         }
     }
     (free, used)
-}
-fn get_range_len(r: &RangeInclusive<usize>) -> usize {
-    r.end() - r.start() + 1
 }
 fn defrag_disk_p2(d: &mut [usize]) -> Option<()> {
     let (mut free, mut used) = analyze_disk(d);
     loop {
         let u = used.pop()?;
-        let rm_start = free.iter().rposition(|f| f.start() < u.start())? + 1;
+        let rm_start = free.iter().rposition(|f| f.start < u.start)? + 1;
         if rm_start < free.len() {
             free.drain(rm_start..);
         }
-        let u_len = get_range_len(&u);
-        if let Some(fi) = free.iter().position(|f| get_range_len(f) >= u_len) {
-            let f = if get_range_len(&free[fi]) == u_len {
+        let u_len = u.len();
+        if let Some(fi) = free.iter().position(|f| f.len() >= u_len) {
+            let f = if free[fi].len() == u_len {
                 free.remove(fi)
             } else {
-                let f_s = *free[fi].start();
-                let f_e = *free[fi].end();
-                free[fi] = f_s + u_len..=f_e;
-                f_s..=f_s + u_len - 1
+                let f_s = free[fi].start;
+                let f_e = free[fi].end;
+                free[fi] = f_s + u_len..f_e;
+                f_s..f_s + u_len
             };
-            let (l, r) = d.split_at_mut(*u.start());
+            let (l, r) = d.split_at_mut(u.start);
             l[f].swap_with_slice(&mut r[0..u_len]);
         }
     }
@@ -161,16 +160,7 @@ pub mod tests {
         let (free, _) = analyze_disk(&d);
         assert_eq!(
             free,
-            vec![
-                2..=4,
-                8..=10,
-                12..=14,
-                18..=18,
-                21..=21,
-                26..=26,
-                31..=31,
-                35..=35
-            ]
+            vec![2..5, 8..11, 12..15, 18..19, 21..22, 26..27, 31..32, 35..36,]
         );
     }
     #[test]
@@ -180,16 +170,16 @@ pub mod tests {
         assert_eq!(
             used,
             vec![
-                0..=1,
-                5..=7,
-                11..=11,
-                15..=17,
-                19..=20,
-                22..=25,
-                27..=30,
-                32..=34,
-                36..=39,
-                40..=41,
+                0..2,
+                5..8,
+                11..12,
+                15..18,
+                19..21,
+                22..26,
+                27..31,
+                32..35,
+                36..40,
+                40..42,
             ]
         );
     }
