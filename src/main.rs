@@ -94,11 +94,10 @@ fn get_range_len(r: &RangeInclusive<usize>) -> usize {
     r.end() - r.start() + 1
 }
 fn defrag_disk_p2(d: &mut [usize]) {
-    // println!("S {}", disk_to_string(d));
     let (mut free, mut used) = analyze_disk(d);
     while let Some(u) = used.pop() {
         let u_len = get_range_len(&u);
-        if let Some(fi) = free.iter().position(|f| get_range_len(f) >= u_len) {
+        if let Some(fi) = free.iter().position(|f| get_range_len(f) >= u_len && f.start() < u.start()) {
             let f_s = *free[fi].start();
             let f_e = *free[fi].end();
             let f = if get_range_len(&free[fi]) == u_len {
@@ -112,18 +111,11 @@ fn defrag_disk_p2(d: &mut [usize]) {
             }
         }
     }
-    // println!("E {}", disk_to_string(d));
 }
 fn main() {
-    let mut d = mk_disk(get_p1_ex2());
+    let mut d = mk_disk(get_data());
     defrag_disk_p2(&mut d);
-    println!("{}", disk_to_string(&d));
     println!("{}", get_disk_checksum(&d));
-    //00992111777.44.333....5555.6666.....8888..   2858
-    //2858 + 420 + 430 + 440 + 450 + 460 + 470 + 480 + 490 + 500
-    //00992111777.44.333....5555.6666.....8888..101010101010101010
-    //000000000011111111112222222222333333333344 4 4 4 4 4 4 4 4 5
-    //012345678901234567890123456789012345678901 2 3 4 5 6 7 8 9 0
 }
 #[cfg(test)]
 pub mod tests {
@@ -210,9 +202,52 @@ pub mod tests {
         assert_eq!(2858, get_disk_checksum(&d));
     }
     #[test]
+    fn p1_t2() {
+        let mut d = mk_disk("12345");
+        defrag_disk_p1(&mut d);
+        assert_eq!(60, get_disk_checksum(&d));
+    }
+    #[test]
+    fn p2_t2() {
+        let mut d = mk_disk("12345");
+        defrag_disk_p2(&mut d);
+        assert_eq!(132, get_disk_checksum(&d));
+    }
+    #[test]
+    fn p2_t3() {
+        let mut d = mk_disk("80893804751608292");
+        defrag_disk_p2(&mut d);
+        assert_eq!(1715, get_disk_checksum(&d));
+    }
+    #[test]
+    fn p2_t4() {
+        let mut d = mk_disk("714892711");
+        defrag_disk_p2(&mut d);
+        assert_eq!(813, get_disk_checksum(&d));
+    }
+    #[test]
+    fn p2_t5() {
+        let mut d = mk_disk("12101");
+        defrag_disk_p2(&mut d);
+        assert_eq!(4, get_disk_checksum(&d));
+    }
+    #[test]
+    fn p2_t6() {
+        let mut d = mk_disk("233313312141413140211");
+        defrag_disk_p2(&mut d);
+        assert_eq!(2910, get_disk_checksum(&d));
+    }
+    #[test]
+    fn p2_t7() {
+        let mut d = mk_disk("1313165");
+        defrag_disk_p2(&mut d);
+        assert_eq!(169, get_disk_checksum(&d));
+    }
+    #[test]
     fn p2() {
         let mut d = mk_disk(get_data());
         defrag_disk_p2(&mut d);
-        assert_eq!(8666607636406, get_disk_checksum(&d));
+        //assert_eq!(8666607636406, get_disk_checksum(&d));
+        assert_eq!(6478232739671, get_disk_checksum(&d));
     }
 }
