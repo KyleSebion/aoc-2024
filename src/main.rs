@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use std::ops::RangeInclusive;
+use std::{ops::RangeInclusive, time::Instant};
 
 #[allow(dead_code)]
 fn get_p1_ex1() -> &'static str {
@@ -27,7 +27,7 @@ fn disk_to_string(d: &[usize]) -> String {
 }
 const FREE_BLOCK: usize = usize::MAX;
 fn mk_disk(d: &str) -> Vec<usize> {
-    let mut v = vec![];
+    let mut v = Vec::with_capacity(d.len() * 9);
     let mut f = true;
     let mut id = 0;
     for c in d.chars() {
@@ -95,27 +95,35 @@ fn get_range_len(r: &RangeInclusive<usize>) -> usize {
 }
 fn defrag_disk_p2(d: &mut [usize]) {
     let (mut free, mut used) = analyze_disk(d);
+    let mut i = 0;
+    let retain_mul = std::cmp::max(2, used.len() / 64);
     while let Some(u) = used.pop() {
+        if i % retain_mul == 0 {
+            free.retain(|f| f.start() < u.start());
+        }
         let u_len = get_range_len(&u);
         if let Some(fi) = free.iter().position(|f| get_range_len(f) >= u_len && f.start() < u.start()) {
-            let f_s = *free[fi].start();
-            let f_e = *free[fi].end();
             let f = if get_range_len(&free[fi]) == u_len {
                 free.remove(fi)
             } else {
+                let f_s = *free[fi].start();
+                let f_e = *free[fi].end();
                 free[fi] = f_s + u_len..=f_e;
                 f_s..=f_s + u_len - 1
             };
-            for (l, r) in u.zip(f) {
-                d.swap(l, r);
-            }
+            let (l, r) = d.split_at_mut(*u.start());
+            l[f].swap_with_slice(&mut r[0..u_len]);
         }
+        i += 1;
     }
 }
 fn main() {
+    let s = Instant::now();
     let mut d = mk_disk(get_data());
     defrag_disk_p2(&mut d);
-    println!("{}", get_disk_checksum(&d));
+    let cs = get_disk_checksum(&d);
+    let d = s.elapsed();
+    println!("{cs} {d:?}");
 }
 #[cfg(test)]
 pub mod tests {
