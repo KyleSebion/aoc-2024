@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 use std::collections::HashSet;
 use std::collections::HashMap;
-use std::iter;
 fn ez1() -> &'static str {
     "\
 ...0...
@@ -158,20 +157,21 @@ impl Map {
     fn get(&self, &Point { x, y }: &Point) -> Option<&char> {
         self.locs.get(y)?.get(x)
     }
-    fn step(&self, point: &Point, pre: char) -> Option<HashSet<Point>> {
+    fn step(&self, point: &Point, pre: char) -> Option<Vec<Point>> {
         let cur = self.get(point)?;
         let ver = Self::next_valid_step(&pre)?;
         let nex = Self::next_valid_step(cur);
         if *cur != ver {
             None
         } else if nex.is_none() {
-            Some(HashSet::from_iter(iter::once(*point)))
+            Some(vec![*point])
         } else {
             let v = Self::DIRECTIONS
                 .iter()
                 .map(|(dx, dy)| Point::new(point.x.wrapping_add(*dx), point.y.wrapping_add(*dy)))
                 .filter_map(|p| self.step(&p, *cur))
-                .fold(HashSet::new(), |mut a, b| { a.extend(b); a});
+                .flatten()
+                .collect::<Vec<_>>();
             if v.is_empty() {
                 None
             } else {
@@ -179,25 +179,35 @@ impl Map {
             }
         }
     }
-    fn get_trailhead_9s_reached(&self, point: &Point) -> HashSet<Point> {
-        self.step(point, ' ').unwrap_or_default()
+    fn get_trailhead_9s_reached(&self, point: &Point) -> (Point, Vec<Point>, HashSet<Point>) {
+        let v = self.step(point, ' ').unwrap_or_default();
+        let h = HashSet::from_iter(v.iter().cloned());
+        (*point, v, h)
     }
-    fn get_trailheads_9s_reached(&self) -> HashMap<Point, HashSet<Point>> {
+    fn get_trailheads_9s_reached(&self) -> HashMap<Point, (Point, Vec<Point>, HashSet<Point>)> {
         self.trailheads
             .iter()
-            .map(|point| (*point, self.get_trailhead_9s_reached(point)))
+            .map(|point| {
+                (*point, self.get_trailhead_9s_reached(point))
+            })
             .collect()
     }
     fn get_trailhead_score(&self, point: &Point) -> usize {
-        self.get_trailhead_9s_reached(point).len()
+        self.get_trailhead_9s_reached(point).2.len()
     }
     fn get_trailheads_score(&self) -> usize {
-        self.get_trailheads_9s_reached().iter().fold(0, |a, (_, set)| a + set.len())
+        self.get_trailheads_9s_reached().iter().fold(0, |a, (_, set)| a + set.2.len())
+    }
+    fn get_trailhead_rating(&self, point: &Point) -> usize {
+        self.get_trailhead_9s_reached(point).1.len()
+    }
+    fn get_trailheads_rating(&self) -> usize {
+        self.get_trailheads_9s_reached().iter().fold(0, |a, (_, set)| a + set.1.len())
     }
 }
 fn main() {
     let m = Map::new(data());
-    println!("{:?}", m.get_trailheads_score());
+    println!("{:?}", m.get_trailheads_rating());
 }
 #[cfg(test)]
 pub mod tests {
@@ -219,4 +229,6 @@ pub mod tests {
     #[test] fn p1_ez3() { assert_eq!(3, Map::new(ez3()).get_trailheads_score()); }
     #[test] fn p1_ex() { assert_eq!(36, Map::new(ex()).get_trailheads_score()); }
     #[test] fn p1_data() { assert_eq!(719, Map::new(data()).get_trailheads_score()); }
+    #[test] fn p2_ex() { assert_eq!(81, Map::new(ex()).get_trailheads_rating()); }
+    #[test] fn p2_data() { assert_eq!(1530, Map::new(data()).get_trailheads_rating()); }
 }
