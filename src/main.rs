@@ -43,9 +43,9 @@ impl Stones {
         if s == 0 {
             vec![1]
         } else {
-            let d = s.ilog10();
-            if d % 2 == 1 {
-                let mag = 10_usize.pow(d / 2 + 1);
+            let d = s.ilog10() + 1;
+            if d % 2 == 0 {
+                let mag = 10_usize.pow(d / 2);
                 let left = s / mag;
                 let right = s - left * mag;
                 vec![left, right]
