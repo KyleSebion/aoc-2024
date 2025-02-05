@@ -361,7 +361,6 @@ impl Map {
             .iter()
             .flat_map(|r| r.iter().map(|c| (c.kind == '|' || c.kind == '_') as usize))
             .sum::<usize>();
-        // println!("region {} p {p} * a {a} = {}", _r, p * a);
         p * a
     }
     fn get_regions_price(m: &HashMap<(char, usize), Vec<Vec<Space>>>) -> usize {
@@ -375,11 +374,11 @@ impl std::fmt::Display for Map {
 }
 fn main() {
     println!("START");
-    let mut m = Map::new(ex2());
+    // let mut m = Map::new(ex2());
 
-    let h = m.walk_all_regions();
-    let p = Map::get_regions_price(&h);
-    println!("{p}");
+    // let h = m.walk_all_regions();
+    // let p = Map::get_regions_price(&h);
+    // println!("{p}");
 
     // let mut h = m.walk_all_regions();
     // for (_, v) in h.drain() {
@@ -387,8 +386,6 @@ fn main() {
     // }
 
     println!("END");
-    // println!("{m}");
-    // println!("{}", Map::get_map_str(&v, true));
 }
 #[cfg(test)]
 mod test {
