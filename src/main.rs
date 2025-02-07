@@ -1404,26 +1404,55 @@ impl Machine {
     fn get_cost((a, b): (isize, isize)) -> isize {
         a * Btn::COST_A + b * Btn::COST_B
     }
+    fn cheapest2(&self) -> Option<(isize, isize)> {
+        let get_max = |btn: &Btn| {
+            let max_x = self.p.x / btn.dx + 1;
+            let max_y = self.p.y / btn.dy + 1;
+            std::cmp::min(max_x, max_y)
+        };
+        let max_a = get_max(&self.a);
+        let max_b = get_max(&self.b);
+        let mut last_a = 0;
+        for bp in (0..max_b).rev() {
+            let x = self.b.dx * bp;
+            let y = self.b.dy * bp;
+            if x > self.p.x || y > self.p.y {
+                continue;
+            }
+            for ap in last_a..max_a {
+                let x = self.a.dx * ap + x;
+                let y = self.a.dy * ap + y;
+                if x == self.p.x && y == self.p.y {
+                    return Some((ap, bp));
+                } else if x < self.p.x || y < self.p.y {
+                    last_a = ap;
+                } else {
+                    break;
+                }
+            }
+        }
+        None
+    }
 }
 fn cost_multiple(d: &str, m: isize) -> isize {
-    d.split("\n\n").filter_map(|ls| Machine::new(ls, m).cheapest()).map(Machine::get_cost).sum::<isize>()
+    d.split("\n\n").filter_map(|ls| Machine::new(ls, m).cheapest2()).map(Machine::get_cost).sum::<isize>()
 }
 fn main() {
     // let m = Machine::new(e4());
     // println!("{m:?}");
     // let c = m.cheapest();
     // println!("{c:?}");
-    println!("{}", cost_multiple(d(), 0));
+    println!("{}", cost_multiple(d(), 10000000000000));
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    #[test] fn e1_c() { assert_eq!(Some((80, 40)), Machine::new(e1(), 0).cheapest()) }
-    #[test] fn e2_c() { assert_eq!(None, Machine::new(e2(), 0).cheapest()) }
-    #[test] fn e3_c() { assert_eq!(Some((38, 86)), Machine::new(e3(), 0).cheapest()) }
-    #[test] fn e4_c() { assert_eq!(None, Machine::new(e4(), 0).cheapest()) }
-    #[test] fn e1_c_c() { assert_eq!(280, Machine::get_cost(Machine::new(e1(), 0).cheapest().unwrap())) }
-    #[test] fn e3_c_c() { assert_eq!(200, Machine::get_cost(Machine::new(e3(), 0).cheapest().unwrap())) }
+    #[test] fn e1_c() { assert_eq!(Some((80, 40)), Machine::new(e1(), 0).cheapest2()) }
+    #[test] fn e2_c() { assert_eq!(None, Machine::new(e2(), 0).cheapest2()) }
+    #[test] fn e3_c() { assert_eq!(Some((38, 86)), Machine::new(e3(), 0).cheapest2()) }
+    #[test] fn e4_c() { assert_eq!(None, Machine::new(e4(), 0).cheapest2()) }
+    #[test] fn e1_c_c() { assert_eq!(280, Machine::get_cost(Machine::new(e1(), 0).cheapest2().unwrap())) }
+    #[test] fn e3_c_c() { assert_eq!(200, Machine::get_cost(Machine::new(e3(), 0).cheapest2().unwrap())) }
     #[test] fn d_c_c() { assert_eq!(34787, cost_multiple(d(), 0)) }
 }
