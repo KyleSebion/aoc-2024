@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Instant};
 
 fn e1() -> &'static str {
     "\
@@ -1433,26 +1433,50 @@ impl Machine {
         }
         None
     }
+    fn cheapest3(&self) -> Option<(isize, isize)> {
+        // a = (x_b * y_p - x_p * y_b) / (x_b * y_a - x_a * y_b)
+        // b = (x_p - x_a * a) / x_b
+        let x_a = self.a.dx;
+        let x_b = self.b.dx;
+        let x_p = self.p.x;
+        let y_a = self.a.dy;
+        let y_b = self.b.dy;
+        let y_p = self.p.y;
+
+        let a_n = x_b * y_p - x_p * y_b;
+        let a_d = x_b * y_a - x_a * y_b;
+        let a = a_n / a_d;
+        let a_r = a_n % a_d;
+
+        let b_n = x_p - x_a * a;
+        let b_d = x_b;
+        let b = b_n / b_d;
+        let b_r = b_n % b_d;
+
+        if a_r != 0 || b_r != 0 {
+            None
+        } else {
+            Some((a, b))
+        }
+    }
 }
 fn cost_multiple(d: &str, m: isize) -> isize {
-    d.split("\n\n").filter_map(|ls| Machine::new(ls, m).cheapest2()).map(Machine::get_cost).sum::<isize>()
+    d.split("\n\n").filter_map(|ls| Machine::new(ls, m).cheapest3()).map(Machine::get_cost).sum::<isize>()
 }
 fn main() {
-    // let m = Machine::new(e4());
-    // println!("{m:?}");
-    // let c = m.cheapest();
-    // println!("{c:?}");
-    println!("{}", cost_multiple(d(), 10000000000000));
+    let s = Instant::now();
+    println!("{} {:?}", cost_multiple(d(), 10000000000000), s.elapsed());
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    #[test] fn e1_c() { assert_eq!(Some((80, 40)), Machine::new(e1(), 0).cheapest2()) }
-    #[test] fn e2_c() { assert_eq!(None, Machine::new(e2(), 0).cheapest2()) }
-    #[test] fn e3_c() { assert_eq!(Some((38, 86)), Machine::new(e3(), 0).cheapest2()) }
-    #[test] fn e4_c() { assert_eq!(None, Machine::new(e4(), 0).cheapest2()) }
-    #[test] fn e1_c_c() { assert_eq!(280, Machine::get_cost(Machine::new(e1(), 0).cheapest2().unwrap())) }
-    #[test] fn e3_c_c() { assert_eq!(200, Machine::get_cost(Machine::new(e3(), 0).cheapest2().unwrap())) }
+    #[test] fn e1_c() { assert_eq!(Some((80, 40)), Machine::new(e1(), 0).cheapest3()) }
+    #[test] fn e2_c() { assert_eq!(None, Machine::new(e2(), 0).cheapest3()) }
+    #[test] fn e3_c() { assert_eq!(Some((38, 86)), Machine::new(e3(), 0).cheapest3()) }
+    #[test] fn e4_c() { assert_eq!(None, Machine::new(e4(), 0).cheapest3()) }
+    #[test] fn e1_c_c() { assert_eq!(280, Machine::get_cost(Machine::new(e1(), 0).cheapest3().unwrap())) }
+    #[test] fn e3_c_c() { assert_eq!(200, Machine::get_cost(Machine::new(e3(), 0).cheapest3().unwrap())) }
     #[test] fn d_c_c() { assert_eq!(34787, cost_multiple(d(), 0)) }
+    #[test] fn d_c_c_2() { assert_eq!(85644161121698, cost_multiple(d(), 10000000000000)) }
 }
