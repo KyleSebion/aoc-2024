@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use std::collections::VecDeque;
+use std::{collections::VecDeque, iter};
 fn e1() -> &'static str {
     "\
 ########
@@ -427,7 +427,7 @@ impl Map {
         Some(())
     }
     fn walk(&mut self) {
-        while self.step().is_some() { }
+        iter::from_fn(|| self.step()).last();
     }
     fn box_sum(&self) -> usize {
         self.m.iter().enumerate().fold(0, |a, (y, r)| {
