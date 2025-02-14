@@ -372,7 +372,7 @@ impl Map {
             } else {
                 rs = self.step(rs);
                 if d_ms != 0 {
-                    print!("{}", self.map_str_w_r(&rs));
+                    print!("\x1B[2J\x1B[H{}", self.map_str_w_r(&rs));
                     std::thread::sleep(std::time::Duration::from_millis(d_ms));
                 }
             }
