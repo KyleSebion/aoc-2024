@@ -323,6 +323,33 @@ impl Map {
         }
         s
     }
+    fn colored_map_str_w_r(&self, rs: &Vrd) -> String {
+        let mut s = String::new();
+        for (y, r) in self.m.iter().enumerate() {
+            for (x, sp) in r.iter().enumerate() {
+                let mut c = sp.to_char();
+                if sp.c != 0 && sp.c != usize::MAX {
+                    c = '*';
+                }
+                let str = if rs.iter().any(|(r, _)| r.p.x == x && r.p.y == y)
+                    && (Pos { x, y }) != self.e
+                {
+                    "\x1b[38;2;255;0;0m▉▉\x1b[38;2;255;255;255m".to_string()
+                } else {
+                    match c {
+                        '.' => format!("\x1b[38;2;0;0;0m{c}{c}\x1b[38;2;255;255;255m"),
+                        '#' => format!("\x1b[38;2;0;0;255m{c}{c}\x1b[38;2;255;255;255m"),
+                        '*' => format!("\x1b[38;2;128;128;255m{c}{c}\x1b[38;2;255;255;255m"),
+                        _ => format!("{c}{c}"),
+                    }
+                };
+                s.push_str(&str);
+            }
+            s.push('\n');
+        }
+        s.push_str("\n\n\n\n\n\n\n\n\n\n");
+        s
+    }
     fn step(&mut self, mut rs: Vrd) -> Vrd {
         if rs.is_empty() {
             let r = Reindeer::new(&self.s);
@@ -331,12 +358,19 @@ impl Map {
         }
         let mut stepped_rs = VecDeque::new();
         let mut cheapest = usize::MAX;
+        // let min_cost = if let Some(c) = rs.iter().min_by_key(|v| if !v.1 { v.0.cost() } else {usize::MAX}).iter().next() {
+        //     c.0.cost()
+        // } else { usize::MAX };
         while let Some((r, is_done)) = rs.pop_front() {
             if is_done {
                 cheapest = r.cost();
                 stepped_rs.push_back((r, true));
                 continue;
             }
+            // if r.cost() > min_cost {
+            //     stepped_rs.push_back((r, is_done));
+            //     continue;
+            // }
             let last_d = r.d.clone();
             for d in Dir::RDLU {
                 let mut r = r.clone();
@@ -372,7 +406,8 @@ impl Map {
             } else {
                 rs = self.step(rs);
                 if d_ms != 0 {
-                    print!("\x1B[2J\x1B[H{}", self.map_str_w_r(&rs));
+                    print!("{}", self.colored_map_str_w_r(&rs));
+                    // print!("\x1B[2J\x1B[H{}", self.colored_map_str_w_r(&rs));
                     std::thread::sleep(std::time::Duration::from_millis(d_ms));
                 }
             }
