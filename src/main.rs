@@ -1,5 +1,6 @@
 #![allow(dead_code)]
-use std::collections::VecDeque;
+use std::{collections::VecDeque, sync::OnceLock, time::{Duration, Instant}};
+use itertools::{self, Itertools};
 fn e1() -> &'static str {
     "\
 ###############
@@ -250,7 +251,10 @@ struct Reindeer {
     d: Dir,
     t: usize,
     s: usize,
+    start: Instant,
+    dur: Duration,
 }
+static START: OnceLock<Instant> = OnceLock::new();
 impl Reindeer {
     fn new(p: &Pos) -> Self {
         Self {
@@ -258,6 +262,8 @@ impl Reindeer {
             d: Dir::RIGHT,
             t: 0,
             s: 0,
+            start: *START.get_or_init(Instant::now),
+            dur: Duration::ZERO,
         }
     }
     fn cost(&self) -> usize {
@@ -393,6 +399,9 @@ impl Map {
                         Kind::End => true,
                         Kind::Wall | Kind::Start => panic!("can't have cost less than 0"),
                     };
+                    if is_done {
+                        r.dur = r.start.elapsed();
+                    }
                     stepped_rs.push_back((r, is_done));
                 }
             }
@@ -408,12 +417,12 @@ impl Map {
                 if d_ms != 0 {
                     print!("{}", self.colored_map_str_w_r(&rs));
                     // print!("\x1B[2J\x1B[H{}", self.colored_map_str_w_r(&rs));
-                    std::thread::sleep(std::time::Duration::from_millis(d_ms));
+                    std::thread::sleep(Duration::from_millis(d_ms));
                 }
             }
         }
     }
-    fn step_all_cheapest(&mut self, rs: VecDeque<(Reindeer, bool)>, d_ms: u64) -> Reindeer {
+    fn step_all_cheapest(&mut self, rs: Vrd, d_ms: u64) -> Reindeer {
         let v = self.step_all(rs, d_ms);
         v.into_iter().min_by_key(|r| r.0.cost()).unwrap().0
     }
@@ -424,10 +433,12 @@ impl std::fmt::Display for Map {
     }
 }
 fn main() {
-    println!("START");
+    println!("START {:?}", *START.get_or_init(Instant::now));
     let mut m = Map::new(d());
-    let r = m.step_all_cheapest(VecDeque::new(), 5);
-    println!("{:?} {}", r, r.cost());
+    let rs = m.step_all(VecDeque::new(), 0);
+    for (r, b) in rs.iter().sorted_by_key(|(r, _)| r.cost()) {
+        println!("{b} {r:?} {}", r.cost());
+    }
 }
 #[cfg(test)]
 mod test {
