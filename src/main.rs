@@ -392,7 +392,7 @@ impl Map {
                 r.s += 1;
                 let s = &mut self.m[r.p.y][r.p.x];
                 let rc = r.cost();
-                if rc < cheapest && rc < s.c {
+                if rc <= cheapest && rc <= s.c {
                     s.c = rc;
                     let is_done = match s.k {
                         Kind::Empty => false,
