@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use std::{collections::VecDeque, sync::OnceLock, time::{Duration, Instant}};
+use std::{collections::VecDeque, iter::{self, once}, sync::LazyLock, time::{Duration, Instant}};
 use itertools::{self, Itertools};
 fn e1() -> &'static str {
     "\
@@ -221,7 +221,7 @@ impl std::fmt::Display for Space {
         write!(f, "{}", self.to_char())
     }
 }
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 struct Pos {
     x: usize,
     y: usize,
@@ -253,18 +253,22 @@ struct Reindeer {
     s: usize,
     start: Instant,
     dur: Duration,
+    path: Vec<Pos>,
 }
-static START: OnceLock<Instant> = OnceLock::new();
+static START: LazyLock<Instant> = LazyLock::new(Instant::now);
 impl Reindeer {
     fn new(p: &Pos) -> Self {
-        Self {
+        let mut s =        Self {
             p: Pos { x: p.x, y: p.y },
             d: Dir::RIGHT,
             t: 0,
             s: 0,
-            start: *START.get_or_init(Instant::now),
+            start: *START,
             dur: Duration::ZERO,
-        }
+            path: Vec::new(),
+        };
+        s.path.push(s.p.clone());
+        s
     }
     fn cost(&self) -> usize {
         self.t * 1000 + self.s
@@ -329,6 +333,23 @@ impl Map {
         }
         s
     }
+    fn map_str_w_r_cost(&self, rs: &Vrd) -> String {
+        let mut s = String::new();
+        for (y, r) in self.m.iter().enumerate() {
+            for (x, c) in r.iter().map(Space::to_char).enumerate() {
+                const W: usize = 7;
+                let min_rs = rs.iter().filter(|(r, _)| r.p.x == x && r.p.y == y).min_by_key(|(r, _)| r.cost());
+                let c = if let Some((r, _)) = min_rs {
+                    format!("{:^W$}", r.cost())
+                } else {
+                    String::from_iter(iter::repeat(c).take(W))
+                };
+                s.push_str(&c);
+            }
+            s.push('\n');
+        }
+        s
+    }
     fn colored_map_str_w_r(&self, rs: &Vrd) -> String {
         let mut s = String::new();
         for (y, r) in self.m.iter().enumerate() {
@@ -367,6 +388,9 @@ impl Map {
         // let min_cost = if let Some(c) = rs.iter().min_by_key(|v| if !v.1 { v.0.cost() } else {usize::MAX}).iter().next() {
         //     c.0.cost()
         // } else { usize::MAX };
+
+        // print!("{}", self.map_str_w_r_cost(&rs));
+        // println!(" ");
         while let Some((r, is_done)) = rs.pop_front() {
             if is_done {
                 cheapest = r.cost();
@@ -390,10 +414,11 @@ impl Map {
                 r.p.x = r.p.x.wrapping_add(r.d.dx);
                 r.p.y = r.p.y.wrapping_add(r.d.dy);
                 r.s += 1;
+                r.path.push(r.p.clone());
                 let s = &mut self.m[r.p.y][r.p.x];
                 let rc = r.cost();
                 if rc <= cheapest && rc <= s.c {
-                    s.c = rc;
+                    s.c = rc + 1000;
                     let is_done = match s.k {
                         Kind::Empty => false,
                         Kind::End => true,
@@ -422,9 +447,23 @@ impl Map {
             }
         }
     }
-    fn step_all_cheapest(&mut self, rs: Vrd, d_ms: u64) -> Reindeer {
+    fn step_all_cheapest_one(&mut self, rs: Vrd, d_ms: u64) -> Reindeer {
         let v = self.step_all(rs, d_ms);
         v.into_iter().min_by_key(|r| r.0.cost()).unwrap().0
+    }
+    fn best_seats(&self, rs: &Vrd) -> usize {
+        rs.iter().min_set_by_key(|(r, _)| r.cost()).iter().flat_map(|(r, _)| r.path.clone()).unique().count()
+    }
+    fn best_seats_map(&self, rs: &Vrd) -> String {
+        let mut m = self.m.iter().map(|r|{
+            r.iter().map(Space::to_char).collect::<Vec<_>>()
+        }).collect::<Vec<_>>();
+        for p in rs.iter().min_set_by_key(|(r, _)| r.cost()).iter().flat_map(|(r, _)| r.path.clone()).unique() {
+            m[p.y][p.x] = 'O'
+        }
+        String::from_iter(m.into_iter().flat_map(|r| {
+            r.into_iter().chain(once('\n'))
+        }))
     }
 }
 impl std::fmt::Display for Map {
@@ -433,12 +472,22 @@ impl std::fmt::Display for Map {
     }
 }
 fn main() {
-    println!("START {:?}", *START.get_or_init(Instant::now));
+    let _ = *START;
+    println!("START {:?}", START.elapsed());
+    // let mut m = Map::new(d());
+    // let rs = m.step_all(VecDeque::new(), 0);
+    // let mut min_cost = usize::MAX;
+    // for (r, b) in rs.iter().sorted_by_key(|(r, _)| r.cost()) {
+    //     if r.cost() <= min_cost {
+    //         min_cost = r.cost();
+    //         println!("{b} {r:#?} {}", r.cost());
+    //     }
+    // }
     let mut m = Map::new(d());
     let rs = m.step_all(VecDeque::new(), 0);
-    for (r, b) in rs.iter().sorted_by_key(|(r, _)| r.cost()) {
-        println!("{b} {r:?} {}", r.cost());
-    }
+    let c = m.best_seats(&rs);
+    println!("{c}");
+    println!("END {:?}", START.elapsed());
 }
 #[cfg(test)]
 mod test {
@@ -449,14 +498,32 @@ mod test {
     }
     #[test]
     fn t_p1_e1_cheapest() {
-        assert_eq!(7036, Map::new(e1()).step_all_cheapest(VecDeque::new(), 0).cost());
+        assert_eq!(7036, Map::new(e1()).step_all_cheapest_one(VecDeque::new(), 0).cost());
     }
     #[test]
     fn t_p1_e2_cheapest() {
-        assert_eq!(11048, Map::new(e2()).step_all_cheapest(VecDeque::new(), 0).cost());
+        assert_eq!(11048, Map::new(e2()).step_all_cheapest_one(VecDeque::new(), 0).cost());
     }
     #[test]
     fn t_p1_d_cheapest() {
-        assert_eq!(108504, Map::new(d()).step_all_cheapest(VecDeque::new(), 0).cost());
+        assert_eq!(108504, Map::new(d()).step_all_cheapest_one(VecDeque::new(), 0).cost());
+    }
+
+    fn best_seats(d: &str) -> usize {
+        let mut m = Map::new(d);
+        let rs = m.step_all(VecDeque::new(), 0);
+        m.best_seats(&rs)
+    }
+    #[test]
+    fn t_p2_e1_best_seats() {
+        assert_eq!(45, best_seats(e1()));
+    }
+    #[test]
+    fn t_p2_e2_best_seats() {
+        assert_eq!(64, best_seats(e2()));
+    }
+    #[test]
+    fn t_p2_d_best_seats() {
+        assert_eq!(538, best_seats(d()));
     }
 }
