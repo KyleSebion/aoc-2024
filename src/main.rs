@@ -262,28 +262,19 @@ fn squeeze_bounds<T: Fn(usize) -> Ordering>(s: usize, e: usize, ss: usize, d: is
     loop {
         match check(i) {
             Ordering::Less => {
-                if d == 1 {
-                    s = i;
-                } else {
-                    ss /= 2;
-                }
+                if d == 1 { s = i; } else { ss /= 2; }
                 i += ss;
             },
             Ordering::Equal => {
                 if ss > 1 {
                     return squeeze_bounds(s, e, ss / 2, d, check);
                 } else {
-                    let se = if d == 1 { &mut s } else { &mut e };
-                    *se = i;
+                    if d == 1 { s = i } else { e = i };
                     return (s, e);
                 }
             },
             Ordering::Greater => {
-                if d == -1 {
-                    e = i;
-                } else {
-                    ss /= 2;
-                }
+                if d == -1 { e = i; } else { ss /= 2; }
                 i -= ss;
             },
         }
