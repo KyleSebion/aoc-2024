@@ -178,6 +178,63 @@ const INSTR_TBL: [Instr; 8] = [
         *ip += 2;
     },
 ];
+
+const fn pow2(exp: usize) -> usize {
+    1 << exp
+}
+fn adv_0(op: &mut usize, a: &mut usize, b: &mut usize, c: &mut usize, ip: &mut usize, _: &mut String) {
+    *a /= pow2(*combo(op, a, b, c));
+    *ip += 2;
+}
+fn bxl_1(op: &mut usize, _: &mut usize, b: &mut usize, _: &mut usize, ip: &mut usize, _: &mut String) {
+    *b ^= *op;
+    *ip += 2;
+}
+fn bst_2(op: &mut usize, a: &mut usize, b: &mut usize, c: &mut usize, ip: &mut usize, _: &mut String) {
+    *b = *combo(op, a, b, c) % 8;
+    *ip += 2;
+}
+fn jnz_3(op: &mut usize, a: &mut usize, _: &mut usize, _: &mut usize, ip: &mut usize, _: &mut String) {
+    if *a == 0 {
+        *ip += 2;
+    } else {
+        *ip = *op;
+    }
+}
+fn bxc_4(_: &mut usize, _: &mut usize, b: &mut usize, c: &mut usize, ip: &mut usize, _: &mut String) {
+    *b ^= *c;
+    *ip += 2;
+}
+fn out_5(op: &mut usize, a: &mut usize, b: &mut usize, c: &mut usize, ip: &mut usize, out: &mut String) {
+    let to_out = *combo(op, a, b, c) % 8;
+    if !out.is_empty() {
+        out.push(',');
+    }
+    out.push((to_out as u8 | 0x30) as char);
+    *ip += 2;
+}
+fn bdv_6(op: &mut usize, a: &mut usize, b: &mut usize, c: &mut usize, ip: &mut usize, _: &mut String) {
+    *b = *a / pow2(*combo(op, a, b, c));
+    *ip += 2;
+}
+fn cdv_7(op: &mut usize, a: &mut usize, b: &mut usize, c: &mut usize, ip: &mut usize, _: &mut String) {
+    *c = *a / pow2(*combo(op, a, b, c));
+    *ip += 2;
+}
+fn do_instr(instr: usize, op: &mut usize, a: &mut usize, b: &mut usize, c: &mut usize, ip: &mut usize, out: &mut String) {
+    match instr {
+        INSTR_ADV => adv_0(op, a, b, c, ip, out),
+        INSTR_BXL => bxl_1(op, a, b, c, ip, out),
+        INSTR_BST => bst_2(op, a, b, c, ip, out),
+        INSTR_JNZ => jnz_3(op, a, b, c, ip, out),
+        INSTR_BXC => bxc_4(op, a, b, c, ip, out),
+        INSTR_OUT => out_5(op, a, b, c, ip, out),
+        INSTR_BDV => bdv_6(op, a, b, c, ip, out),
+        INSTR_CDV => cdv_7(op, a, b, c, ip, out),
+        _ => {},
+    }
+}
+
 fn get_prog_str(d: &str) -> &str {
     get_prog_str_from_block1(d.split("\n\n").last().expect("block1"))
 }
@@ -189,6 +246,24 @@ fn get_prog_str_from_block1(block1: &str) -> &str {
         .split(' ')
         .last()
         .expect("prog 2")
+}
+fn run_program(ov_a: Option<usize>, prog: &[usize]) -> String {
+    let a = &mut 0;
+    let b = &mut 0;
+    let c = &mut 0;
+    let ip = &mut 0;
+    let mut out = String::with_capacity(32);
+    if let Some(ov_a) = ov_a {
+        *a = ov_a;
+    }
+    loop {
+        if *ip > prog.len() - 2 { break; }
+        let instr = prog[*ip];
+        let mut op_val = prog[*ip + 1];
+        let op = &mut op_val;
+        do_instr(instr, op, a, b, c, ip, &mut out);
+    }
+    out
 }
 fn run_program_and_test(d: &str, ov_a: Option<usize>, ex_a: Option<usize>, ex_b: Option<usize>, ex_c: Option<usize>) -> String {
     let a = &mut 0;
@@ -221,7 +296,8 @@ fn run_program_and_test(d: &str, ov_a: Option<usize>, ex_a: Option<usize>, ex_b:
         let instr = prog[*ip];
         let mut op_val = prog[*ip + 1];
         let op = &mut op_val;
-        INSTR_TBL[instr](op, a, b, c, ip, &mut out)
+        // INSTR_TBL[instr](op, a, b, c, ip, &mut out);
+        do_instr(instr, op, a, b, c, ip, &mut out);
     }
     if let Some(ex_a) = ex_a { assert_eq!(*a, ex_a); }
     if let Some(ex_b) = ex_b { assert_eq!(*b, ex_b); }
@@ -250,7 +326,7 @@ fn print_run_override_1str(d: &str, prog_str: &str, ov: usize) -> String {
     println!("{ov} {prog_str} {res} {:?}", s.elapsed());
     res
 }
-fn squeeze_bounds<T: Fn(usize) -> Ordering>(s: usize, e: usize, ss: usize, d: isize, check: &T) -> (usize, usize) {
+fn squeeze_bounds<T: Fn(usize, isize) -> Ordering>(s: usize, e: usize, ss: usize, d: isize, check: &T) -> (usize, usize) {
     if d == 0 {
         let (s, e) = squeeze_bounds(s, e, ss, 1, check);
         return squeeze_bounds(s, e, ss, -1, check);
@@ -260,7 +336,7 @@ fn squeeze_bounds<T: Fn(usize) -> Ordering>(s: usize, e: usize, ss: usize, d: is
     let mut ss = ss;
     let mut i = if d == 1 { s } else { e };
     loop {
-        match check(i) {
+        match check(i, d) {
             Ordering::Less => {
                 if d == 1 { s = i; } else { ss /= 2; }
                 i += ss;
@@ -281,22 +357,112 @@ fn squeeze_bounds<T: Fn(usize) -> Ordering>(s: usize, e: usize, ss: usize, d: is
     }
 }
 fn find_override_alg(d: &str) -> usize {
+    //2,4,1,5,7,5,1,6,0,3,4,2,5,5,3,0
     let prog_str = get_prog_str(d);
-    let prog_str_len = prog_str.len();
-    let (s, e) = squeeze_bounds(0, usize::MAX, usize::MAX / 1024, 0, &|i| {
-        let res = print_run_override_1str(d, prog_str, i);
-        if res == prog_str {
-            panic!("FOUND IT {i}")
-        }
-        res.len().cmp(&prog_str_len)
-    });
-    println!("{s} {e} {} {}", s == 35184372088832, e == 281474976710655);
 
+    // let look_s = 8;
+    // let look_l = 7;
+    // let look_m = String::from_iter(prog_str.chars().skip(look_s).take(look_l));
+    // println!("{look_m}"); // 7,5,1,6,0,3
+    // let (s, e) = squeeze_bounds(s, e, (e - s) / 102400, 0, &|i, dir| {
+    //     let res = print_run_override_1str(d, prog_str, i);
+    //     let res_m = String::from_iter(res.chars().skip(look_s).take(look_l));
+    //     if res_m == look_m {
+    //         return Ordering::Equal;
+    //     }
+    //     if i > e { return Ordering::Greater; }
+    //     if i < s { return Ordering::Less; }
+    //     if dir == 1 {
+    //         Ordering::Less
+    //     } else if dir == -1 {
+    //         Ordering::Greater
+    //     } else {
+    //         panic!("no")
+    //     }
+    // });
+    // println!("{s} {e}");
+
+    //prog: 2,4,1,5,7,5,1,6,0,3,4,2,5,5,3,0
+    //last 6 (excluding very last) seem to change at the same time
+    //1. 35184372088832..=281474976710655 based on length
+    //  a1. let prog_str_len = prog_str.len(); let (s, e) = squeeze_bounds(0, usize::MAX, usize::MAX / 1024, 0, &|i, _| { print_run_override_1str(d, prog_str, i).len().cmp(&prog_str_len) });
+    //  a2. println!("{s} {e} {} {}", s == 35184372088832, e == 281474976710655);
+    //  b1. had what seemed to be good luck with:
+    //      for i in (s+11643290..e).step_by(16777216 * 64) {
+    //          for a in [0, 4194304, 4227072] {
+    //              if r.starts_with("2,4,1,5,7,5,1") && r != last && r.ends_with("5,5,3,0") {
+    //  b2. 16777216 based on pinkish purple at https://docs.google.com/spreadsheets/d/17VCj4QsdiONDWZhHMegegn1b1qx7dFN0mdwcOXjp4mw/edit?gid=1710713870#gid=1710713870
+    //2. 108995544197530..=136956859263386 based on checking first 7 and last 6 in steps of 16777216
+    //3. below 109558863325594 because advent said too high
+    //4. (this could be wrong because i checked sub-ranges of them) below 109146941794714 (nothing good from it to 109558863325594)
+    #[allow(clippy::single_element_loop)]
+    for range in [108995544197530..=109146941794714] { //none
+        let prog = &prog_str
+            .split(',')
+            .map(|v| v.parse::<usize>().expect("instr"))
+            .collect::<Vec<_>>();
+        let thread_cnt = 12;
+        let start = range.start();
+        let size = (range.end() - start) / thread_cnt;
+        let tids = Vec::from_iter(0..thread_cnt);
+        std::thread::scope(|s|{
+            for i in tids.iter() {
+                s.spawn(|| {
+                    let prog = &prog.clone()[..];
+                    let i = *i;
+                    let s = start + i * size;
+                    let e = s + size;
+                    for ov in s..e {
+                        let r = run_program(Some(ov), prog);
+                        if r == "2,4,1,5,7,5,1,6,0,3,4,2,5,5,3,0" {
+                            println!("{ov} {prog_str} {r}");
+                        }
+                    }
+                });
+            }
+        });
+    }
     0
+}
+fn tmp_1(d: &str) {
+    // cuda: ~170,937,941 per sec
+    // mt:    ~27,939,094 per sec
+    let s = Instant::now();
+    //2,4,1,5,7,5,1,6,0,3,4,2,5,5,3,0
+    let prog_str = get_prog_str(d);
+    #[allow(clippy::single_element_loop)]
+    for range in [0..=(5000*65536-1)] {
+        let prog = &prog_str
+            .split(',')
+            .map(|v| v.parse::<usize>().expect("instr"))
+            .collect::<Vec<_>>();
+        let thread_cnt = 12;
+        let start = range.start();
+        let size = (range.end() - start) / thread_cnt;
+        let tids = Vec::from_iter(0..thread_cnt);
+        std::thread::scope(|s|{
+            for i in tids.iter() {
+                s.spawn(|| {
+                    let prog = &prog.clone()[..];
+                    let i = *i;
+                    let s = start + i * size;
+                    let e = s + size;
+                    for ov in s..e {
+                        let r = run_program(Some(ov), prog);
+                        if ov % 4194304 == 0 {
+                            println!("{ov} {r}; ");
+                        }
+                    }
+                });
+            }
+        });
+    }
+    println!("END {:?}", s.elapsed());
 }
 fn main() {
     println!("START");
-    println!("{}", find_override_alg(d()));
+    tmp_1(d());
+    // println!("{}", find_override_alg(d()));
     // let s = Instant::now();
     // assert_eq!(117440, find_override(e7()));
     // println!("{:?}", s.elapsed());
