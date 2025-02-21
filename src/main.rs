@@ -93,23 +93,25 @@ fn convert_to_res(v: u64) -> String {
     s.chars().rev().collect()
 }
 fn main() -> Result<(), DriverError> {
-    // cuda: ~170,937,941 per sec
-    // mt:    ~27,939,094 per sec
+    // cuda: ~224,757,102 per sec (7x faster)
+    // mt:    ~32,343,872 per sec
     println!("START");
+    const CUDA_SIZE: u64 = 1024*1024*222; // max in release until gpu OOM error
+    const LOOP_END: u64 = 16;
     let s = Instant::now();
     let dev = CudaDevice::new(0)?;
     dev.load_ptx(compile_ptx(prog_ptx()).unwrap(), "prog", &["prog"])?;
     let f = dev.get_func("prog", "prog").unwrap();
-    let a_dev = dev.htod_copy([0_u64; 65536].into())?;
+    let a_dev = dev.htod_copy([0_u64; CUDA_SIZE as usize].into())?;
     let n = a_dev.len() as u32;
     let cfg = LaunchConfig::for_num_elems(n);
-    for s in (0_u64..5000).map(|s| s * 65536) {
+    for s in (0_u64..LOOP_END).map(|s| s * CUDA_SIZE) {
         let mut a_dev = a_dev.clone();
         unsafe { f.clone().launch(cfg, (s, &mut a_dev, n)) }?;
         let a_host_2 = dev.sync_reclaim(a_dev)?;
         for (i, v) in a_host_2.iter().enumerate() {
             let i = i as u64 + s;
-            if i % 4194304 == 0 {
+            if i % CUDA_SIZE == 0 || i == CUDA_SIZE * LOOP_END - 1 {
                 println!("{} {}; ", i, convert_to_res(*v));
             }
         }
