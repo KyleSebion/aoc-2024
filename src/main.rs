@@ -425,20 +425,22 @@ fn find_override_alg(d: &str) -> usize {
     0
 }
 fn tmp_1(d: &str) {
-    // cuda: ~170,937,941 per sec
-    // mt:    ~27,939,094 per sec
+    // cuda: ~224,757,102 per sec (7x faster)
+    // mt:    ~32,343,872 per sec
     let s = Instant::now();
     //2,4,1,5,7,5,1,6,0,3,4,2,5,5,3,0
     let prog_str = get_prog_str(d);
-    #[allow(clippy::single_element_loop)]
-    for range in [0..=(5000*65536-1)] {
+    const CUDA_SIZE: usize = 1024*1024*222;
+    const LOOP_END: usize = 16;
+    #[allow(clippy::single_element_loop, clippy::single_range_in_vec_init)]
+    for range in [0..CUDA_SIZE*LOOP_END] {
         let prog = &prog_str
             .split(',')
             .map(|v| v.parse::<usize>().expect("instr"))
             .collect::<Vec<_>>();
         let thread_cnt = 12;
-        let start = range.start();
-        let size = (range.end() - start) / thread_cnt;
+        let start = range.start;
+        let size = (range.end - start) / thread_cnt;
         let tids = Vec::from_iter(0..thread_cnt);
         std::thread::scope(|s|{
             for i in tids.iter() {
@@ -446,10 +448,10 @@ fn tmp_1(d: &str) {
                     let prog = &prog.clone()[..];
                     let i = *i;
                     let s = start + i * size;
-                    let e = s + size;
+                    let e = if i == thread_cnt - 1 { range.end } else { s + size };
                     for ov in s..e {
                         let r = run_program(Some(ov), prog);
-                        if ov % 4194304 == 0 {
+                        if ov % CUDA_SIZE == 0 || ov == CUDA_SIZE * LOOP_END - 1 {
                             println!("{ov} {r}; ");
                         }
                     }
