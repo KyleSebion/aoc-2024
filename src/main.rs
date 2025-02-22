@@ -183,7 +183,7 @@ const fn pow2(exp: usize) -> usize {
     1 << exp
 }
 fn adv_0(op: &mut usize, a: &mut usize, b: &mut usize, c: &mut usize, ip: &mut usize, _: &mut String) {
-    *a /= pow2(*combo(op, a, b, c));
+    *a >>= *combo(op, a, b, c);
     *ip += 2;
 }
 fn bxl_1(op: &mut usize, _: &mut usize, b: &mut usize, _: &mut usize, ip: &mut usize, _: &mut String) {
@@ -214,11 +214,11 @@ fn out_5(op: &mut usize, a: &mut usize, b: &mut usize, c: &mut usize, ip: &mut u
     *ip += 2;
 }
 fn bdv_6(op: &mut usize, a: &mut usize, b: &mut usize, c: &mut usize, ip: &mut usize, _: &mut String) {
-    *b = *a / pow2(*combo(op, a, b, c));
+    *b = *a >> *combo(op, a, b, c);
     *ip += 2;
 }
 fn cdv_7(op: &mut usize, a: &mut usize, b: &mut usize, c: &mut usize, ip: &mut usize, _: &mut String) {
-    *c = *a / pow2(*combo(op, a, b, c));
+    *c = *a >> *combo(op, a, b, c);
     *ip += 2;
 }
 fn do_instr(instr: usize, op: &mut usize, a: &mut usize, b: &mut usize, c: &mut usize, ip: &mut usize, out: &mut String) {
@@ -395,6 +395,8 @@ fn find_override_alg(d: &str) -> usize {
     //2. 108995544197530..=136956859263386 based on checking first 7 and last 6 in steps of 16777216
     //3. below 109558863325594 because advent said too high
     //4. (this could be wrong because i checked sub-ranges of them) below 109146941794714 (nothing good from it to 109558863325594)
+    //5. seems lower than 108285405522330 based on cuda program.
+    //6. 106086382266778 is the answer!
     #[allow(clippy::single_element_loop)]
     for range in [108995544197530..=109146941794714] { //none
         let prog = &prog_str
@@ -423,6 +425,47 @@ fn find_override_alg(d: &str) -> usize {
         });
     }
     0
+}
+fn num_res_to_str(v: u64) -> Option<String> {
+    if (v << v.leading_zeros()).leading_ones() < 4 { return None; }
+    let mut v = v;
+    let mut s = String::new();
+    loop {
+        if v == 15 { break; }
+        if !s.is_empty() { s.push(','); }
+        let c = (v & 0b111 | 0x30) as u8 as char;
+        s.push(c);
+        v >>= 3;
+    }
+    Some(s.chars().rev().collect())
+}
+fn str_res_to_num(res: &str) -> u64 {
+    let mut v = 15;
+    for r in res.split(",").map(|r| r.parse::<u64>().unwrap()) {
+        v = v << 3 | r;
+    }
+    v
+}
+fn testing(d: &str) {
+    let prog_str = get_prog_str(d);
+    let prog = &prog_str
+        .split(',')
+        .map(|v| v.parse::<usize>().expect("instr"))
+        .collect::<Vec<_>>();
+
+
+    for ov in [641428845, 926641590, 1020264301, 108285405522330, 106086382266778] {
+        println!("{ov} {}", run_program(Some(ov), prog))
+    }
+    println!("sep");
+
+    for ov in [641428842, 926641514, 931135488, 1020263277, 931135341] {
+        println!("{ov} {}", run_program(Some(ov), prog))
+    }
+    for (s, n) in [("3,3,3,3,3,3,4,1,1,5", 16566302797), ("3,3,3,3,3,3,3,6,1,5", 16566302605), ("2,4,1,5,7,5,1,6,0,3,4,2,5,5,3,0", 4311044668140376)] {
+        println!("{}=={} = {}, {}=={} = {}", s, num_res_to_str(n).unwrap(), s == num_res_to_str(n).unwrap(), n, str_res_to_num(s), n == str_res_to_num(s));
+    }
+    //4311044668140376 2,4,1,5,7,5,1,6,0,3,4,2,5,5,3,0
 }
 fn tmp_1(d: &str) {
     // cuda: ~224,757,102 per sec (7x faster)
@@ -462,8 +505,10 @@ fn tmp_1(d: &str) {
     println!("END {:?}", s.elapsed());
 }
 fn main() {
+    // 106086382266778 is the answer!
     println!("START");
-    tmp_1(d());
+    // tmp_1(d());
+    testing(d());
     // println!("{}", find_override_alg(d()));
     // let s = Instant::now();
     // assert_eq!(117440, find_override(e7()));
