@@ -3578,18 +3578,18 @@ fn find_when_blocked(d: (usize, usize, usize, &str)) -> &str {
         // let st = Instant::now();
         // print!("{c} ");
         d.2 = c;
-        let m = &get_map(d);
+        let m = &get_map(d);         // does take(c); take(2) would yield nth(0) and nth(1)
         let ms = &get_paths(m);
-        let s = get_min_steps(ms);
+        let ss = get_min_steps(ms);
         // println!("{s} {:?}", st.elapsed());
         // if let Some(str) = get_min_map(ms) {
         //     print!("{str}");
         // }
-        if s != 0 {
-            return d.3.lines().nth(c).unwrap();
+        if ss != 0 {
+            return d.3.lines().nth(c).unwrap();       // if c == 2 like in comment above, nth(2) would yield the line after nth(0) and nth(1) (the bad line)
         }
     }
-    ""
+    unreachable!()
 }
 
 fn main() {
