@@ -3591,7 +3591,6 @@ fn find_when_blocked(d: (usize, usize, usize, &str)) -> &str {
     }
     unreachable!()
 }
-
 fn main() {
     let s = Instant::now();
     println!("{} {:?}", find_when_blocked(d1()), s.elapsed());
