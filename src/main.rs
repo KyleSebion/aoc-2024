@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::{collections::HashMap, str::FromStr};
+use std::{collections::HashMap, str::FromStr, time::Instant};
 use itertools::{self, Itertools};
 
 fn e1() -> &'static str {
@@ -451,8 +451,13 @@ fn step_towel(av: &HashMap<char, Vec<&str>>, t: &str, s: &str) -> bool {
         false
     }
 }
+const DO_POSS_PRINT: bool = false;
 fn towel_is_possible(av: &HashMap<char, Vec<&str>>, t: &str) -> bool {
-    step_towel(av, t, "")
+    let s = Instant::now();
+    if DO_POSS_PRINT { print!("{t:60}"); }
+    let r = step_towel(av, t, "");
+    if DO_POSS_PRINT { println!(" {r:5} {:8} us", s.elapsed().as_micros()); }
+    r
 }
 fn check_towels_possible<'a>(
     av: &HashMap<char, Vec<&str>>,
@@ -525,6 +530,7 @@ fn dedup_av(av: &mut Vec<&str>) {
 
 fn main() {
     println!("START");
+    println!("{}", count_towels_that_are_possible_from_data2(d()));
 }
 
 #[cfg(test)]
