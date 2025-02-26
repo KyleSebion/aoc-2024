@@ -477,14 +477,12 @@ fn count_towels_that_are_possible_from_data1(d: &str) -> usize {
     let av = get_lookup(&av);
     count_towels_that_are_possible(&av, &de)
 }
-
 fn count_towels_that_are_possible_from_data2(d: &str) -> usize {
     let (mut av, de) = parse_avail_desired(d);
     dedup_av(&mut av);
     let av = get_lookup(&av);
     count_towels_that_are_possible(&av, &de)
 }
-
 const POSSIBLE_SINGLES: [char; 5] = ['w', 'u', 'b', 'r', 'g'];
 const DO_DEDUP_PRINT: bool = false;
 fn dedup_av(av: &mut Vec<&str>) {
@@ -527,10 +525,71 @@ fn dedup_av(av: &mut Vec<&str>) {
         print_fn(av);
     }
 }
+fn count_towel_combos_slow(avc: &[&str], r: &str, _step: usize) -> usize {
+    if !r.contains(POSSIBLE_SINGLES) {
+        1
+    } else {
+        let avcn = avc.iter().filter(|&f| r.contains(f)).copied().sorted_by_key(|v| usize::MAX.wrapping_sub(v.len())).collect_vec();
+        // println!("{:_step$}", avcn.len());
+        // avcn.iter().fold(0, |a, f| a + count_towel_combos(&avcn, r.splitn(2, f).join(","), _step + 1))
+        avcn.iter().filter_map(|f| r.strip_prefix(f)).fold(0, |a, r| a + count_towel_combos_slow(&avcn, r, _step + 1))
+    }
+}
+fn count_towels_combos_slow(d: &str) -> usize {
+    let (mut av, de) = parse_avail_desired(d);
+    let avc = av.clone();
+    dedup_av(&mut av);
+    let av = get_lookup(&av);
+    let ts = check_towels_possible(&av, &de).remove(&true).unwrap();
+    ts.into_iter().sorted_by_key(|v| v.len()).inspect(|t| println!("{t}")).map(|t| count_towel_combos_slow(&avc, t, 0)).sum()
+}
 
+fn add_towel_combos<'a>(av: &[&'a str], r: &str, res: &mut Vec<Vec<&'a str>>, tmp: Vec<&'a str>, _step: usize) {
+    if !r.contains(POSSIBLE_SINGLES) {
+        res.push(tmp);
+    } else {
+        for &f in av {
+            if let Some(r) = r.strip_prefix(f) {
+                let tmp = tmp.iter().chain([&f]).copied().collect();
+                add_towel_combos(av, r, res, tmp, _step + 1);
+            }
+        }
+    }
+}
+fn count_towels_combos(d: &str) -> usize {
+    let (mut av, de) = parse_avail_desired(d);
+    let _avc = av.clone();
+    dedup_av(&mut av);
+    let avh = get_lookup(&av);
+    let ts = check_towels_possible(&avh, &de).remove(&true).unwrap();
+    let short_combos = ts.into_iter().map(|t| {
+        let mut t_short_combos = Vec::new();
+        add_towel_combos(&av, t, &mut t_short_combos, Vec::new(), 0);
+        for v in &mut t_short_combos {
+            v.sort();
+        }
+        t_short_combos.sort();
+        t_short_combos.dedup();
+        (t, t_short_combos)
+    }).collect::<HashMap<_, _>>();
+    for (&t, combos) in short_combos.iter().sorted_by_key(|&(t, _)| (t.len(), t)) {
+        // println!("{:6} {t}", combos.len());
+        // if t == "wggbugrgwrugguggrwwgbwgrrrrgwgbbwbugrbwgbrgr" {
+        //     println!("{:6} {t}", combos.len());
+        //     for v in combos {
+        //         println!("{}", v.join(","));
+        //     }
+        // }
+
+        //next, create ???
+
+        //need to sort and dedup again
+    }
+    0
+}
 fn main() {
     println!("START");
-    println!("{}", count_towels_that_are_possible_from_data2(d()));
+    println!("{}", count_towels_combos(d()));
 }
 
 #[cfg(test)]
