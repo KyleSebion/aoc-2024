@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::{collections::HashMap, str::FromStr, time::Instant};
+use std::{collections::{HashMap, HashSet}, str::FromStr, time::Instant};
 use itertools::{self, Itertools};
 
 fn e1() -> &'static str {
@@ -571,6 +571,7 @@ fn count_towels_combos_abandoned(d: &str) -> usize {
         t_short_combos.dedup();
         (t, t_short_combos)
     }).collect::<HashMap<_, _>>();
+    #[allow(unused_variables)]
     for (&t, combos) in short_combos.iter().sorted_by_key(|&(t, _)| (t.len(), t)) {
         // println!("{:6} {t}", combos.len());
         // if t == "wggbugrgwrugguggrwwgbwgrrrrgwgbbwbugrbwgbrgr" {
@@ -587,10 +588,52 @@ fn count_towels_combos_abandoned(d: &str) -> usize {
     0
     // this seems to not be the way
 }
+fn add_combos_abandon2<'a>(hm: &mut HashMap<&'a str, Vec<Vec<&'a str>>>, av: &[&'a str], s: &'a str, _step: usize) {
+    if hm.contains_key(s) { return; }
+    let mut cs = HashSet::new();
+    if av.contains(&s) { cs.insert(vec![s]); }
+    for i in 1..s.len() {
+        let (l, r) = s.split_at(i);
+        // if _step < 21 { println!("{:_step$} {_step:3} {i:2} {:2} {:12} {l} {r}", "", s.len(), cs.len()); }
+        add_combos_abandon2(hm, av, l, _step + 1);
+        add_combos_abandon2(hm, av, r, _step + 1);
+        // println!("{:_step$} {_step:3} {i:2} {:2} {:8} {:8} {:16} {:12} {l} {r}", "", s.len(), hm[l].len(), hm[r].len(), hm[l].len() * hm[r].len(), cs.len());
+        for lc in &hm[l] {
+            if lc.is_empty() { continue; }
+            for rc in &hm[r] {
+                if rc.is_empty() { continue; }
+                let mut lrcs = lc.clone();
+                lrcs.extend(rc);
+                lrcs.sort();
+                cs.insert(lrcs);
+            }
+        }
+    }
+    hm.insert(s, cs.drain().collect());
+}
+fn count_towels_combos_abandon2(d: &str) -> usize {
+    let (av, de) = parse_avail_desired(d);
+    let mut hm = HashMap::new();
+    for &s in &av {
+        add_combos_abandon2(&mut hm, &av, s, 0);
+        println!("{s} {}", hm[s].len());
+    }
+    for &s in &de {
+        add_combos_abandon2(&mut hm, &av, s, 0);
+        println!("{s} {}", hm[s].len());
+    }
+    // for x in hm {
+    //     println!("{} {:?}", x.0, x.1);
+    // }
+
+    de.iter().map(|&s| hm[s].len()).sum()
+}
+
 
 
 fn main() {
     println!("START");
+    // println!("{}", count_towels_combos_abandon2(d()));
 }
 
 #[cfg(test)]
