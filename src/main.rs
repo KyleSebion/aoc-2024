@@ -30,6 +30,14 @@ fn d() -> &'static str {
     include_str!("input.txt")
 }
 
+trait MakeWeak {
+    fn make_weak(self: &Rc<Self>) -> Weak<Self>;
+}
+impl<T> MakeWeak for T {
+    fn make_weak(self: &Rc<T>) -> Weak<T> {
+        Rc::downgrade(self)
+    }
+}
 const CHEAT_SIZE: usize = 2;
 struct Space {
     kind: char,
@@ -67,13 +75,6 @@ struct Map {
     height: usize,
 }
 impl Map {
-    fn make_weak_space(
-        spaces: &[Vec<Rc<RefCell<Space>>>],
-        x: usize,
-        y: usize,
-    ) -> Weak<RefCell<Space>> {
-        Rc::downgrade(&Rc::clone(&spaces[y][x]))
-    }
     fn new(d: &str) -> Self {
         let mut spaces = Vec::new();
         for l in d.lines() {
@@ -99,16 +100,16 @@ impl Map {
             for x in 0..width {
                 let mut s = spaces[y][x].borrow_mut();
                 if y > 0 {
-                    s.up = Self::make_weak_space(&spaces, x, y - 1);
+                    s.up = Rc::downgrade(&spaces[y - 1][x]);
                 }
                 if x > 0 {
-                    s.left = Self::make_weak_space(&spaces, x - 1, y);
+                    s.left = spaces[y][x - 1].make_weak()
                 }
                 if y < height - 1 {
-                    s.down = Self::make_weak_space(&spaces, x, y + 1);
+                    s.down = spaces[y + 1][x].make_weak();
                 }
                 if x < width - 1 {
-                    s.right = Self::make_weak_space(&spaces, x + 1, y);
+                    s.right = spaces[y][x + 1].make_weak();
                 }
             }
         }
