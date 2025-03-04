@@ -45,19 +45,19 @@ impl Space {
         kind: char,
         x: usize,
         y: usize,
-        up: Weak<RefCell<Self>>,
         right: Weak<RefCell<Self>>,
         down: Weak<RefCell<Self>>,
         left: Weak<RefCell<Self>>,
+        up: Weak<RefCell<Self>>,
     ) -> Self {
         Self {
             kind,
             x,
             y,
-            up,
             right,
             down,
             left,
+            up,
         }
     }
 }
@@ -91,17 +91,17 @@ impl Map {
         for y in 0..height {
             for x in 0..width {
                 let mut s = spaces[y][x].borrow_mut();
-                if y > 0 {
-                    s.up = Rc::downgrade(&spaces[y - 1][x]);
-                }
-                if x > 0 {
-                    s.left = Rc::downgrade(&spaces[y][x - 1]);
+                if x < width - 1 {
+                    s.right = Rc::downgrade(&spaces[y][x + 1]);
                 }
                 if y < height - 1 {
                     s.down = Rc::downgrade(&spaces[y + 1][x]);
                 }
-                if x < width - 1 {
-                    s.right = Rc::downgrade(&spaces[y][x + 1]);
+                if x > 0 {
+                    s.left = Rc::downgrade(&spaces[y][x - 1]);
+                }
+                if y > 0 {
+                    s.up = Rc::downgrade(&spaces[y - 1][x]);
                 }
             }
         }
@@ -167,5 +167,19 @@ mod test {
         let s = s.borrow().left.upgrade().unwrap();
         let s = s.borrow();
         assert_eq!((s.kind, s.x, s.y), ('E', 5, 7));
+    }
+    #[test]
+    fn e1_nav_oob_up() {
+        let m = Map::new(e1());
+        let s = &m.spaces[0][0];
+        let s = s.borrow().up.upgrade();
+        assert!(s.is_none());
+    }
+    #[test]
+    fn e1_nav_oob_right() {
+        let m = Map::new(e1());
+        let s = &m.spaces[0][14];
+        let s = s.borrow().right.upgrade();
+        assert!(s.is_none());
     }
 }
