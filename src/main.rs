@@ -30,14 +30,6 @@ fn d() -> &'static str {
     include_str!("input.txt")
 }
 
-trait MakeWeak {
-    fn make_weak(self: &Rc<Self>) -> Weak<Self>;
-}
-impl<T> MakeWeak for T {
-    fn make_weak(self: &Rc<T>) -> Weak<T> {
-        Rc::downgrade(self)
-    }
-}
 const CHEAT_SIZE: usize = 2;
 struct Space {
     kind: char,
@@ -103,13 +95,13 @@ impl Map {
                     s.up = Rc::downgrade(&spaces[y - 1][x]);
                 }
                 if x > 0 {
-                    s.left = spaces[y][x - 1].make_weak()
+                    s.left = Rc::downgrade(&spaces[y][x - 1]);
                 }
                 if y < height - 1 {
-                    s.down = spaces[y + 1][x].make_weak();
+                    s.down = Rc::downgrade(&spaces[y + 1][x]);
                 }
                 if x < width - 1 {
-                    s.right = spaces[y][x + 1].make_weak();
+                    s.right = Rc::downgrade(&spaces[y][x + 1]);
                 }
             }
         }
