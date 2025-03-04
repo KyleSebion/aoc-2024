@@ -9,6 +9,27 @@ use std::{
     time::Instant,
 };
 
+fn eks1() -> &'static str {
+    "\
+r, wr, b, g, bwu, rb, gb, br
+
+brbr
+"
+/*
+5 in easy mode
+    b, r, b, r
+    b, rb, r
+    br, br
+    b, r, br
+    br, b, r
+4 in hard mode
+    b, r, b, r
+    b, rb, r
+    br, br
+    b, r, br
+*/
+}
+
 fn e1() -> &'static str {
     "\
 r, wr, b, g, bwu, rb, gb, br
@@ -1135,7 +1156,6 @@ fn count_towels_combos(d: &str) -> usize {
     println!("{:?}", s.elapsed());
     0
 }
-
 fn count_towel_basic<'a>(t: &'a str, av: &[&'a str], hm: &Rc<RefCell<HashMap<&'a str, usize>>>) -> usize {
     if t.is_empty() {
         1
@@ -1165,9 +1185,32 @@ fn count_towels_basic(d: &str) -> usize {
     }
     sum
 }
+fn count_towels_ks1() -> usize {
+    // change "existing[self_combo] == 2" to 2000 to see dups (but also desired/correct for the answer)
+    // https://www.reddit.com/r/adventofcode/comments/1j30a9u/2024_day_19_part_two_clarifying_example/
+    let d = eks1();
+    println!("{}", count_towels_basic(d));
+    let (av, de) = parse_avail_desired(d);
+    let t = de[0];
+    let c = Combos::build(&av, t, 2, true);
+    for cmb in c.get_flattened_vecs() {
+        println!("{}", cmb.join(", "));
+    }
+
+    let d = e1();
+    println!("{}", count_towels_basic(d));
+    let (av, de) = parse_avail_desired(d);
+    for t in de {
+        let c = Combos::build(&av, t, 2, true);
+        for cmb in c.get_flattened_vecs() {
+            println!("{}", cmb.join(", "));
+        }
+    }
+    0
+}
 fn main() {
     println!("START");
-    println!("{}", count_towels_basic(d()));
+    // count_towels_ks1();
 }
 
 #[cfg(test)]
