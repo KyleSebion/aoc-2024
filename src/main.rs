@@ -1,8 +1,11 @@
 #![allow(dead_code)]
 
 use std::cell::RefCell;
+use std::iter::repeat;
 use std::rc::Rc;
 use std::rc::Weak;
+
+use itertools::Itertools;
 
 fn e1() -> &'static str {
     "\
@@ -65,6 +68,10 @@ struct Map {
     spaces: Vec<Vec<Rc<RefCell<Space>>>>,
     width: usize,
     height: usize,
+    start_x: usize,
+    start_y: usize,
+    end_x: usize,
+    end_y: usize,
 }
 impl Map {
     fn new(d: &str) -> Self {
@@ -84,13 +91,23 @@ impl Map {
             }
             spaces.push(r);
         }
-        let (width, height) = (spaces[0].len(), spaces.len());
         assert!(spaces.iter().is_sorted_by(|a, b| a.len() == b.len()));
-        assert!(width > 0);
-        assert!(height > 0);
+        let (width, height) = (spaces[0].len(), spaces.len());
+        for d in [width, height] {
+            assert_ne!(d, 0);
+        }
+        let (mut start_x, mut start_y, mut end_x, mut end_y) =
+            repeat(usize::MAX).next_tuple().unwrap();
         for y in 0..height {
             for x in 0..width {
                 let mut s = spaces[y][x].borrow_mut();
+                if s.kind == 'S' {
+                    start_x = x;
+                    start_y = y;
+                } else if s.kind == 'E' {
+                    end_x = x;
+                    end_y = y;
+                }
                 if x < width - 1 {
                     s.right = Rc::downgrade(&spaces[y][x + 1]);
                 }
@@ -105,10 +122,17 @@ impl Map {
                 }
             }
         }
+        for p in [start_x, start_y, end_x, end_y] {
+            assert_ne!(p, usize::MAX);
+        }
         Self {
             spaces,
             width,
             height,
+            start_x,
+            start_y,
+            end_x,
+            end_y,
         }
     }
 }
@@ -163,6 +187,15 @@ mod test {
     fn e1_nav_end2() {
         let m = Map::new(e1());
         let s = &m.spaces[8][6];
+        let s = s.borrow().up.upgrade().unwrap();
+        let s = s.borrow().left.upgrade().unwrap();
+        let s = s.borrow();
+        assert_eq!((s.kind, s.x, s.y), ('E', 5, 7));
+    }
+    #[test]
+    fn e1_nav_end3() {
+        let m = Map::new(e1());
+        let s = &m.spaces[m.end_y + 1][m.end_x + 1];
         let s = s.borrow().up.upgrade().unwrap();
         let s = s.borrow().left.upgrade().unwrap();
         let s = s.borrow();
