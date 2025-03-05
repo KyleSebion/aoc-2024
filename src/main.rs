@@ -1,11 +1,12 @@
 #![allow(dead_code)]
 
+use std::cell::Ref;
 use std::cell::RefCell;
-use std::iter::repeat;
+use std::cell::RefMut;
 use std::rc::Rc;
 use std::rc::Weak;
-
-use itertools::Itertools;
+use std::thread;
+use std::time::Instant;
 
 fn e1() -> &'static str {
     "\
@@ -34,44 +35,141 @@ fn d() -> &'static str {
 }
 
 const CHEAT_SIZE: usize = 2;
-struct Space {
+struct SpaceInner {
     kind: char,
     x: usize,
     y: usize,
-    up: Weak<RefCell<Self>>,
-    right: Weak<RefCell<Self>>,
-    down: Weak<RefCell<Self>>,
-    left: Weak<RefCell<Self>>,
+    up: Weak<Space>,
+    right: Weak<Space>,
+    down: Weak<Space>,
+    left: Weak<Space>,
+    min_steps_to: usize,
 }
+struct Space(RefCell<SpaceInner>);
 impl Space {
-    fn new(
-        kind: char,
-        x: usize,
-        y: usize,
-        right: Weak<RefCell<Self>>,
-        down: Weak<RefCell<Self>>,
-        left: Weak<RefCell<Self>>,
-        up: Weak<RefCell<Self>>,
-    ) -> Self {
-        Self {
+    fn new(kind: char) -> Rc<Self> {
+        Rc::new(Self(RefCell::new(SpaceInner {
             kind,
-            x,
-            y,
-            right,
-            down,
-            left,
-            up,
+            x: 0,
+            y: 0,
+            right: Weak::new(),
+            down: Weak::new(),
+            left: Weak::new(),
+            up: Weak::new(),
+            min_steps_to: usize::MAX,
+        })))
+    }
+    fn borrow(self: &Rc<Self>) -> Ref<'_, SpaceInner> {
+        self.0.borrow()
+    }
+    fn borrow_mut(self: &Rc<Self>) -> RefMut<'_, SpaceInner> {
+        self.0.borrow_mut()
+    }
+    fn cant_step_to(self: &Rc<Self>) -> bool {
+        self.borrow().kind == '#'
+    }
+    fn at_start(self: &Rc<Self>) -> bool {
+        self.borrow().kind == 'S'
+    }
+    fn at_end(self: &Rc<Self>) -> bool {
+        self.borrow().kind == 'E'
+    }
+    fn get_x(self: &Rc<Self>) -> usize {
+        self.borrow().x
+    }
+    fn get_y(self: &Rc<Self>) -> usize {
+        self.borrow().y
+    }
+    fn get_min_steps_to(self: &Rc<Self>) -> usize {
+        self.borrow().min_steps_to
+    }
+    fn reset_min_steps(self: &Rc<Self>) {
+        self.borrow_mut().min_steps_to = usize::MAX;
+    }
+    fn set_min_steps(self: &Rc<Self>, steps: usize) {
+        self.borrow_mut().min_steps_to = steps;
+    }
+    fn step(self: &Rc<Self>, cur_steps: usize, do_print: bool, do_ind: bool) -> Option<usize> {
+        let ind = if do_ind { cur_steps * 2 } else { 0 };
+        if self.get_min_steps_to() < cur_steps {
+            if do_print {
+                println!(
+                    "{:ind$}{},{} {} < {}",
+                    "",
+                    self.get_x(),
+                    self.get_y(),
+                    self.get_min_steps_to(),
+                    cur_steps
+                );
+            }
+            return None;
         }
+        if self.cant_step_to() {
+            if do_print {
+                println!("{:ind$}{},{} cant_step_to", "", self.get_x(), self.get_y());
+            }
+            return None;
+        }
+        if do_print {
+            println!(
+                "{:ind$}{},{} min_steps_to = {cur_steps}",
+                "",
+                self.get_x(),
+                self.get_y()
+            );
+        }
+        self.set_min_steps(cur_steps);
+        if self.at_end() {
+            if do_print {
+                println!(
+                    "{:ind$}{},{} at_end = {cur_steps}",
+                    "",
+                    self.get_x(),
+                    self.get_y()
+                );
+            }
+            return Some(cur_steps);
+        }
+        let mut costs = Vec::new();
+        let sb = self.borrow();
+        for w in [&sb.right, &sb.down, &sb.left, &sb.up] {
+            if let Some(s) = w.upgrade() {
+                if do_print {
+                    println!(
+                        "{:ind$}{},{} trying {},{} {}",
+                        "",
+                        self.get_x(),
+                        self.get_y(),
+                        s.get_x(),
+                        s.get_y(),
+                        cur_steps + 1
+                    );
+                }
+                if let Some(steps) = s.step(cur_steps + 1, do_print, do_ind) {
+                    costs.push(steps);
+                }
+            }
+        }
+        let ret = costs.into_iter().min();
+        if do_print {
+            println!(
+                "{:ind$}{},{} returning cur_steps+1 == {} {:?} ",
+                "",
+                self.get_x(),
+                self.get_y(),
+                cur_steps + 1,
+                ret
+            );
+        }
+        ret
     }
 }
 struct Map {
-    spaces: Vec<Vec<Rc<RefCell<Space>>>>,
+    spaces: Vec<Vec<Rc<Space>>>,
     width: usize,
     height: usize,
-    start_x: usize,
-    start_y: usize,
-    end_x: usize,
-    end_y: usize,
+    start: Weak<Space>,
+    end: Weak<Space>,
 }
 impl Map {
     fn new(d: &str) -> Self {
@@ -79,15 +177,7 @@ impl Map {
         for l in d.lines() {
             let mut r = Vec::new();
             for c in l.chars() {
-                r.push(Rc::new(RefCell::new(Space::new(
-                    c,
-                    r.len(),
-                    spaces.len(),
-                    Weak::new(),
-                    Weak::new(),
-                    Weak::new(),
-                    Weak::new(),
-                ))));
+                r.push(Space::new(c));
             }
             spaces.push(r);
         }
@@ -96,17 +186,17 @@ impl Map {
         for d in [width, height] {
             assert_ne!(d, 0);
         }
-        let (mut start_x, mut start_y, mut end_x, mut end_y) =
-            repeat(usize::MAX).next_tuple().unwrap();
+        let (mut start, mut end) = (Weak::new(), Weak::new());
         for y in 0..height {
             for x in 0..width {
-                let mut s = spaces[y][x].borrow_mut();
+                let space = &spaces[y][x];
+                let mut s = space.borrow_mut();
+                s.x = x;
+                s.y = y;
                 if s.kind == 'S' {
-                    start_x = x;
-                    start_y = y;
+                    start = Rc::downgrade(space);
                 } else if s.kind == 'E' {
-                    end_x = x;
-                    end_y = y;
+                    end = Rc::downgrade(space);
                 }
                 if x < width - 1 {
                     s.right = Rc::downgrade(&spaces[y][x + 1]);
@@ -122,23 +212,40 @@ impl Map {
                 }
             }
         }
-        for p in [start_x, start_y, end_x, end_y] {
-            assert_ne!(p, usize::MAX);
+        for p in [&start, &end] {
+            assert!(p.upgrade().is_some());
         }
         Self {
             spaces,
             width,
             height,
-            start_x,
-            start_y,
-            end_x,
-            end_y,
+            start,
+            end,
         }
     }
+    fn get_steps_s_to_e(&self, do_print: bool, do_ind: bool) -> Option<usize> {
+        let ret = self.start.upgrade()?.step(0, do_print, do_ind);
+        for r in &self.spaces {
+            for s in r {
+                s.reset_min_steps();
+            }
+        }
+        ret
+    }
 }
-
-fn main() {}
-
+fn run1() {
+    let s = Instant::now();
+    let m = Map::new(d());
+    // println!("{:?} {:?}", m.get_steps_s_to_e(true, false), s.elapsed()); // 9s (in release mode)
+    println!("{:?} {:?}", m.get_steps_s_to_e(false, false), s.elapsed()); // 4ms (in release mode)
+}
+fn main() {
+    let c = thread::Builder::new()
+        .stack_size(1024 * 1024 * 1024)
+        .spawn(run1)
+        .unwrap();
+    c.join().unwrap();
+}
 #[cfg(test)]
 mod test {
     use super::*;
@@ -187,15 +294,6 @@ mod test {
     fn e1_nav_end2() {
         let m = Map::new(e1());
         let s = &m.spaces[8][6];
-        let s = s.borrow().up.upgrade().unwrap();
-        let s = s.borrow().left.upgrade().unwrap();
-        let s = s.borrow();
-        assert_eq!((s.kind, s.x, s.y), ('E', 5, 7));
-    }
-    #[test]
-    fn e1_nav_end3() {
-        let m = Map::new(e1());
-        let s = &m.spaces[m.end_y + 1][m.end_x + 1];
         let s = s.borrow().up.upgrade().unwrap();
         let s = s.borrow().left.upgrade().unwrap();
         let s = s.borrow();
