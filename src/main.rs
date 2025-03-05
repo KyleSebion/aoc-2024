@@ -239,12 +239,16 @@ fn run1() {
     // println!("{:?} {:?}", m.get_steps_s_to_e(true, false), s.elapsed()); // 9s (in release mode)
     println!("{:?} {:?}", m.get_steps_s_to_e(false, false), s.elapsed()); // 4ms (in release mode)
 }
-fn main() {
-    let c = thread::Builder::new()
+fn run_with_big_stack_and_wait(f: fn()) {
+    thread::Builder::new()
         .stack_size(1024 * 1024 * 1024)
-        .spawn(run1)
+        .spawn(f)
+        .unwrap()
+        .join()
         .unwrap();
-    c.join().unwrap();
+}
+fn main() {
+    run_with_big_stack_and_wait(run1);
 }
 #[cfg(test)]
 mod test {
