@@ -236,8 +236,8 @@ impl Map {
 fn run1() {
     let s = Instant::now();
     let m = Map::new(d());
-    // println!("{:?} {:?}", m.get_steps_s_to_e(true, false), s.elapsed()); // 9s (in release mode)
-    println!("{:?} {:?}", m.get_steps_s_to_e(false, false), s.elapsed()); // 4ms (in release mode)
+    // println!("{}x{} {:?} {:?}", m.width, m.height, m.get_steps_s_to_e(true, false), s.elapsed()); // 9s (in release mode)
+    println!("{}x{} {:?} {:?}", m.width, m.height, m.get_steps_s_to_e(false, false), s.elapsed()); // 5ms (in release mode)
 }
 fn run_with_big_stack_and_wait(f: fn()) {
     thread::Builder::new()
