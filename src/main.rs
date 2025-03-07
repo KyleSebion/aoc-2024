@@ -130,8 +130,7 @@ impl Space {
             return Some(cur_steps);
         }
         let mut costs = Vec::new();
-        let sb = self.borrow();
-        for w in [&sb.right, &sb.down, &sb.left, &sb.up] {
+        for w in [self.get_r(), self.get_d(), self.get_l(), self.get_u()] {
             if let Some(s) = w.upgrade() {
                 let _ = np
                     || () == println!("{p} trying {},{} {}", s.get_x(), s.get_y(), cur_steps + 1);
