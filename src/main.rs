@@ -340,7 +340,7 @@ impl Map {
         // println!("{}\n", self.get_map_string_w_cheats());
         self.get_steps_s_to_e(false, false)
     }
-    fn get_steps_with_cheats(&self) -> HashMap<Option<usize>, usize> {
+    fn get_saved_steps_with_cheats(&self) -> HashMap<Option<usize>, usize> {
         let (base, _) = self.get_steps_s_to_e(false, false).unwrap();
         let mut v = Vec::new();
         for r in &self.spaces {
@@ -363,15 +363,25 @@ impl Map {
             .map(|c| c.map(|c| base - c))
             .counts()
     }
+    fn get_count_of_cheats_that_save_at_least_100_steps(&self) -> usize {
+        self.get_saved_steps_with_cheats()
+            .into_iter()
+            .filter_map(|(s, c)| {
+                if let Some(s) = s {
+                    if s >= 100 {
+                        return Some(c);
+                    }
+                }
+                None
+            })
+            .sum::<usize>()
+    }
 }
 fn run1() {
     let s = Instant::now();
     let m = Map::new(d());
-    let steps = m.get_steps_with_cheats();
-    for (&s, &c) in steps.iter().sorted_by_key(|&(s, _)| s) {
-        println!("{c:<3} saved {s:?}");
-    }
-    println!("{:?}", s.elapsed());
+    let sum = m.get_count_of_cheats_that_save_at_least_100_steps();
+    println!("{sum} {:?}", s.elapsed());
 }
 fn run_with_big_stack_and_wait(f: fn()) {
     thread::Builder::new()
@@ -528,10 +538,8 @@ mod test {
     fn e1_all_cheats() {
         let m = Map::new(e1());
         let vr = vec![
-            // "422 saved None", // without optimizations
-            "72  saved None",
-            // "434 saved Some(0)", // without optimizations
-            "324 saved Some(0)",
+            "377 saved None",
+            "19  saved Some(0)",
             "14  saved Some(2)",
             "14  saved Some(4)",
             "2   saved Some(6)",
@@ -544,7 +552,7 @@ mod test {
             "1   saved Some(40)",
             "1   saved Some(64)",
         ];
-        let steps = m.get_steps_with_cheats();
+        let steps = m.get_saved_steps_with_cheats();
         for (i, (&s, &c)) in steps.iter().sorted_by_key(|&(s, _)| s).enumerate() {
             assert_eq!(vr[i], format!("{c:<3} saved {s:?}"));
         }
@@ -556,5 +564,13 @@ mod test {
             m.get_steps_s_to_e(false, false)
         });
         assert_eq!(9348, res.unwrap().0);
+    }
+    #[test]
+    fn d_count() {
+        let res = run_with_big_stack_and_wait_and_ret(|| {
+            let m = Map::new(d());
+            m.get_count_of_cheats_that_save_at_least_100_steps()
+        });
+        assert_eq!(1321, res);
     }
 }
