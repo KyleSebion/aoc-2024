@@ -307,7 +307,6 @@ impl Map {
         self.get_steps_s_to_e(false, false)
     }
     fn get_steps_s_to_e_cheat(&self, c1: Weak<Space>, c2: Weak<Space>) -> Option<(usize, String)> {
-        let mut ret_none = true;
         for (s, c) in [(&c1, '1'), (&c2, '2')] {
             if let Some(s) = s.upgrade() {
                 if c == '1' && s.get_k() == '#' {
@@ -318,26 +317,28 @@ impl Map {
                         .all(|c| c == '#');
                     if !surrounded_by_walls {
                         s.set_c(c);
-                        ret_none = false;
+                    } else {
+                        self.reset();
+                        return None;
                     }
                 } else if c == '2' && s.get_k() != '#' {
                     s.set_c(c);
-                    ret_none = false;
+                } else {
+                    self.reset();
+                    return None;
                 }
+            } else {
+                self.reset();
+                return None;
             }
         }
-        if ret_none {
-            self.reset();
-            None
-        } else {
-            println!(
-                "{},{}",
-                c1.upgrade().unwrap().get_x(),
-                c1.upgrade().unwrap().get_y()
-            );
-            // println!("{}\n", self.get_map_string_w_cheats());
-            self.get_steps_s_to_e(false, false)
-        }
+        println!(
+            "{},{}",
+            c1.upgrade().unwrap().get_x(),
+            c1.upgrade().unwrap().get_y()
+        );
+        // println!("{}\n", self.get_map_string_w_cheats());
+        self.get_steps_s_to_e(false, false)
     }
     fn get_steps_with_cheats(&self) -> HashMap<Option<usize>, usize> {
         let (base, _) = self.get_steps_s_to_e(false, false).unwrap();
