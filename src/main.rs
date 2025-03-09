@@ -287,7 +287,8 @@ impl Map {
     fn get_steps_s_to_e(&self, do_print: bool, do_ind: bool) -> Option<(usize, String)> {
         if let Some(start) = self.start.upgrade() {
             if let Some(ret) = start.step(0, ' ', do_print, do_ind) {
-                let map = self.get_map_string_w_cheats();
+                // let map = self.get_map_string_w_cheats();
+                let map = "".to_owned();
                 self.reset();
                 return Some((ret, map));
             }
@@ -306,25 +307,53 @@ impl Map {
         self.get_steps_s_to_e(false, false)
     }
     fn get_steps_s_to_e_cheat(&self, c1: Weak<Space>, c2: Weak<Space>) -> Option<(usize, String)> {
-        for (s, c) in [(c1, '1'), (c2, '2')] {
+        let mut ret_none = true;
+        for (s, c) in [(&c1, '1'), (&c2, '2')] {
             if let Some(s) = s.upgrade() {
-                s.set_c(c);
-            } else {
-                self.reset();
-                return None;
+                if c == '1' && s.get_k() == '#' {
+                    let surrounded_by_walls = [s.get_r(), s.get_d(), s.get_l(), s.get_r()]
+                        .into_iter()
+                        .filter_map(|c| c.upgrade())
+                        .map(|c| c.get_k())
+                        .all(|c| c == '#');
+                    if !surrounded_by_walls {
+                        s.set_c(c);
+                        ret_none = false;
+                    }
+                } else if c == '2' && s.get_k() != '#' {
+                    s.set_c(c);
+                    ret_none = false;
+                }
             }
         }
-        self.get_steps_s_to_e(false, false)
+        if ret_none {
+            self.reset();
+            None
+        } else {
+            println!(
+                "{},{}",
+                c1.upgrade().unwrap().get_x(),
+                c1.upgrade().unwrap().get_y()
+            );
+            // println!("{}\n", self.get_map_string_w_cheats());
+            self.get_steps_s_to_e(false, false)
+        }
     }
     fn get_steps_with_cheats(&self) -> HashMap<Option<usize>, usize> {
         let (base, _) = self.get_steps_s_to_e(false, false).unwrap();
         let mut v = Vec::new();
         for r in &self.spaces {
             for s in r {
-                v.push(self.get_steps_s_to_e_cheat(s.get_w(), s.get_r()));
-                v.push(self.get_steps_s_to_e_cheat(s.get_w(), s.get_d()));
-                v.push(self.get_steps_s_to_e_cheat(s.get_w(), s.get_l()));
-                v.push(self.get_steps_s_to_e_cheat(s.get_w(), s.get_u()));
+                if s.get_k() == '#' {
+                    if (1..self.width - 1).contains(&s.get_x()) {
+                        v.push(self.get_steps_s_to_e_cheat(s.get_w(), s.get_r()));
+                        v.push(self.get_steps_s_to_e_cheat(s.get_w(), s.get_l()));
+                    }
+                    if (1..self.height - 1).contains(&s.get_y()) {
+                        v.push(self.get_steps_s_to_e_cheat(s.get_w(), s.get_d()));
+                        v.push(self.get_steps_s_to_e_cheat(s.get_w(), s.get_u()));
+                    }
+                }
             }
         }
         v.sort();
@@ -336,12 +365,12 @@ impl Map {
 }
 fn run1() {
     let s = Instant::now();
-    let m = Map::new(e1());
+    let m = Map::new(d());
     let steps = m.get_steps_with_cheats();
-    println!("{:?}", s.elapsed());
     for (&s, &c) in steps.iter().sorted_by_key(|&(s, _)| s) {
         println!("{c:<3} saved {s:?}");
     }
+    println!("{:?}", s.elapsed());
 }
 fn run_with_big_stack_and_wait(f: fn()) {
     thread::Builder::new()
@@ -498,8 +527,10 @@ mod test {
     fn e1_all_cheats() {
         let m = Map::new(e1());
         let vr = vec![
-            "422 saved None",
-            "434 saved Some(0)",
+            // "422 saved None", // without optimizations
+            "72  saved None",
+            // "434 saved Some(0)", // without optimizations
+            "324 saved Some(0)",
             "14  saved Some(2)",
             "14  saved Some(4)",
             "2   saved Some(6)",
