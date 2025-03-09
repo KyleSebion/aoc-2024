@@ -316,8 +316,8 @@ impl Map {
         }
         self.get_steps_s_to_e(false, false)
     }
-    fn get_steps_with_cheats(&self) -> HashMap<Option<isize>, usize> {
-        let (base, map) = self.get_steps_s_to_e(false, false).unwrap();
+    fn get_steps_with_cheats(&self) -> HashMap<Option<usize>, usize> {
+        let (base, _) = self.get_steps_s_to_e(false, false).unwrap();
         let mut v = Vec::new();
         for r in &self.spaces {
             for s in r {
@@ -328,16 +328,9 @@ impl Map {
             }
         }
         v.sort();
-
-        println!("{map}");
-        for (v, s) in v.iter().flatten() {
-            if v == &20 {
-                println!("{s}");
-            }
-        }
         v.into_iter()
             .map(|c| c.map(|c| c.0))
-            .map(|c| c.map(|c| base as isize - c as isize))
+            .map(|c| c.map(|c| base - c))
             .counts()
     }
 }
@@ -500,6 +493,29 @@ mod test {
                 .unwrap()
                 .0
         );
+    }
+    #[test]
+    fn e1_all_cheats() {
+        let m = Map::new(e1());
+        let vr = vec![
+            "422 saved None",
+            "434 saved Some(0)",
+            "14  saved Some(2)",
+            "14  saved Some(4)",
+            "2   saved Some(6)",
+            "4   saved Some(8)",
+            "2   saved Some(10)",
+            "3   saved Some(12)",
+            "1   saved Some(20)",
+            "1   saved Some(36)",
+            "1   saved Some(38)",
+            "1   saved Some(40)",
+            "1   saved Some(64)",
+        ];
+        let steps = m.get_steps_with_cheats();
+        for (i, (&s, &c)) in steps.iter().sorted_by_key(|&(s, _)| s).enumerate() {
+            assert_eq!(vr[i], format!("{c:<3} saved {s:?}"));
+        }
     }
     #[test]
     fn d_s_to_e() {
