@@ -88,7 +88,7 @@ impl Space {
 
             // c 2 and pre 1 and c 2 wall
             (true, false, true, true) => false,
-            
+
             // c 2 and pre not 1
             (false, false, true, false) => false,
             (true, false, true, false) => false,
@@ -335,7 +335,10 @@ impl Map {
                 println!("{s}");
             }
         }
-        v.into_iter().map(|c| c.map(|c| c.0)).map(|c| c.map(|c| base as isize - c as isize)).counts()
+        v.into_iter()
+            .map(|c| c.map(|c| c.0))
+            .map(|c| c.map(|c| base as isize - c as isize))
+            .counts()
     }
 }
 fn run1() {
@@ -443,7 +446,9 @@ mod test {
         let m = Map::new(e1());
         assert_eq!(
             72,
-            m.get_steps_s_to_e_cheat_pos(Pos { x: 8, y: 1 }, Pos { x: 9, y: 1 }).unwrap().0
+            m.get_steps_s_to_e_cheat_pos(Pos { x: 8, y: 1 }, Pos { x: 9, y: 1 })
+                .unwrap()
+                .0
         );
     }
     #[test]
@@ -451,7 +456,9 @@ mod test {
         let m = Map::new(e1());
         assert_eq!(
             64,
-            m.get_steps_s_to_e_cheat_pos(Pos { x: 10, y: 7 }, Pos { x: 11, y: 7 }).unwrap().0
+            m.get_steps_s_to_e_cheat_pos(Pos { x: 10, y: 7 }, Pos { x: 11, y: 7 })
+                .unwrap()
+                .0
         );
     }
     #[test]
@@ -459,7 +466,9 @@ mod test {
         let m = Map::new(e1());
         assert_eq!(
             72,
-            m.get_steps_s_to_e_cheat(m.spaces[1][8].get_w(), m.spaces[1][8].get_r()).unwrap().0
+            m.get_steps_s_to_e_cheat(m.spaces[1][8].get_w(), m.spaces[1][8].get_r())
+                .unwrap()
+                .0
         );
     }
     #[test]
@@ -467,7 +476,9 @@ mod test {
         let m = Map::new(e1());
         assert_eq!(
             64,
-            m.get_steps_s_to_e_cheat(m.spaces[7][10].get_w(), m.spaces[7][10].get_r()).unwrap().0
+            m.get_steps_s_to_e_cheat(m.spaces[7][10].get_w(), m.spaces[7][10].get_r())
+                .unwrap()
+                .0
         );
     }
     #[test]
@@ -475,7 +486,9 @@ mod test {
         let m = Map::new(e1());
         assert_eq!(
             46,
-            m.get_steps_s_to_e_cheat(m.spaces[8][8].get_w(), m.spaces[8][8].get_d()).unwrap().0
+            m.get_steps_s_to_e_cheat(m.spaces[8][8].get_w(), m.spaces[8][8].get_d())
+                .unwrap()
+                .0
         );
     }
     #[test]
@@ -483,7 +496,9 @@ mod test {
         let m = Map::new(e1());
         assert_eq!(
             20,
-            m.get_steps_s_to_e_cheat(m.spaces[7][6].get_w(), m.spaces[7][6].get_l()).unwrap().0
+            m.get_steps_s_to_e_cheat(m.spaces[7][6].get_w(), m.spaces[7][6].get_l())
+                .unwrap()
+                .0
         );
     }
     #[test]
