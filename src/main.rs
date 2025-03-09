@@ -36,7 +36,6 @@ fn d() -> &'static str {
     include_str!("input.txt")
 }
 
-const CHEAT_SIZE: usize = 2;
 struct SpaceInner {
     kind: char,
     x: usize,
