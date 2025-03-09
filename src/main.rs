@@ -1,13 +1,14 @@
 #![allow(dead_code, clippy::unit_cmp)]
 
+use itertools::Itertools;
 use std::cell::Ref;
 use std::cell::RefCell;
 use std::cell::RefMut;
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::rc::Weak;
 use std::thread;
 use std::time::Instant;
-use itertools::Itertools;
 
 fn e1() -> &'static str {
     "\
@@ -45,6 +46,7 @@ struct SpaceInner {
     down: Weak<Space>,
     left: Weak<Space>,
     min_steps_to: usize,
+    cheat: char,
 }
 struct Space(RefCell<SpaceInner>);
 impl Space {
@@ -58,6 +60,7 @@ impl Space {
             left: Weak::new(),
             up: Weak::new(),
             min_steps_to: usize::MAX,
+            cheat: ' ',
         })))
     }
     fn borrow(self: &Rc<Self>) -> Ref<'_, SpaceInner> {
@@ -66,8 +69,45 @@ impl Space {
     fn borrow_mut(self: &Rc<Self>) -> RefMut<'_, SpaceInner> {
         self.0.borrow_mut()
     }
-    fn cant_step_to(self: &Rc<Self>, p: char) -> bool {
-        self.get_k() == '#' || (self.get_k() == '2' && p != '1')
+    fn can_step_to(self: &Rc<Self>, pre_c: char) -> bool {
+        let c = self.get_c();
+        let k = self.get_k();
+        match (k == '#', c == '1', c == '2', pre_c == '1') {
+            // nothing special; not wall
+            (false, false, false, false) => true,
+
+            // nothing special; wall
+            (true, false, false, false) => false,
+
+            // c 1
+            (false, true, false, false) => true,
+            (true, true, false, false) => true,
+
+            // c 2 and pre 1 and c 2 not wall
+            (false, false, true, true) => true,
+
+            // c 2 and pre 1 and c 2 wall
+            (true, false, true, true) => false,
+            
+            // c 2 and pre not 1
+            (false, false, true, false) => false,
+            (true, false, true, false) => false,
+
+            // c not 2 and pre 1
+            (false, false, false, true) => false,
+            (true, false, false, true) => false,
+
+            //cannot happen
+            (false, true, false, true) => panic!("no"),
+            (true, true, false, true) => panic!("no"),
+            (false, true, true, false) => panic!("no"),
+            (true, true, true, false) => panic!("no"),
+            (false, true, true, true) => panic!("no"),
+            (true, true, true, true) => panic!("no"),
+        }
+    }
+    fn cant_step_to(self: &Rc<Self>, pre_c: char) -> bool {
+        !self.can_step_to(pre_c)
     }
     fn at_start(self: &Rc<Self>) -> bool {
         self.get_k() == 'S'
@@ -96,6 +136,12 @@ impl Space {
     fn get_y(self: &Rc<Self>) -> usize {
         self.borrow().y
     }
+    fn get_c(self: &Rc<Self>) -> char {
+        self.borrow().cheat
+    }
+    fn set_c(self: &Rc<Self>, c: char) {
+        self.borrow_mut().cheat = c;
+    }
     fn get_k(self: &Rc<Self>) -> char {
         self.borrow().kind
     }
@@ -105,13 +151,14 @@ impl Space {
     fn get_min_steps_to(self: &Rc<Self>) -> usize {
         self.borrow().min_steps_to
     }
-    fn reset_min_steps(self: &Rc<Self>) {
-        self.borrow_mut().min_steps_to = usize::MAX;
-    }
     fn set_min_steps(self: &Rc<Self>, steps: usize) {
         self.borrow_mut().min_steps_to = steps;
     }
-    fn step(self: &Rc<Self>, cur_steps: usize, pre: char, dp: bool, di: bool) -> Option<usize> {
+    fn reset_min_steps_and_cheat(self: &Rc<Self>) {
+        self.set_min_steps(usize::MAX);
+        self.set_c(' ');
+    }
+    fn step(self: &Rc<Self>, cur_steps: usize, pre_c: char, dp: bool, di: bool) -> Option<usize> {
         let np = !dp;
         let ind = if di { cur_steps * 2 } else { 0 };
         let p = format!("{:ind$}{},{}", "", self.get_x(), self.get_y());
@@ -119,7 +166,7 @@ impl Space {
             let _ = np || () == println!("{p} {} < {}", self.get_min_steps_to(), cur_steps);
             return None;
         }
-        if self.cant_step_to(pre) {
+        if self.cant_step_to(pre_c) {
             let _ = np || () == println!("{p} cant_step_to");
             return None;
         }
@@ -134,7 +181,7 @@ impl Space {
             if let Some(s) = w.upgrade() {
                 let _ = np
                     || () == println!("{p} trying {},{} {}", s.get_x(), s.get_y(), cur_steps + 1);
-                if let Some(steps) = s.step(cur_steps + 1, self.get_k(), dp, di) {
+                if let Some(steps) = s.step(cur_steps + 1, self.get_c(), dp, di) {
                     costs.push(steps);
                 }
             }
@@ -208,67 +255,97 @@ impl Map {
             end,
         }
     }
-    fn get_steps_s_to_e(&self, do_print: bool, do_ind: bool) -> Option<usize> {
-        let ret = self.start.upgrade()?.step(0, ' ', do_print, do_ind);
-        for r in &self.spaces {
-            for s in r {
-                s.reset_min_steps();
-            }
-        }
-        ret
-    }
     fn get_map_string(&self) -> String {
         self.spaces
             .iter()
             .map(|r| r.iter().map(Space::get_k).join(""))
             .join("\n")
     }
-    fn panic_oob_pos(&self, c: &Pos) {
-        if c.x >= self.width || c.y >= self.height {
-            panic!("{c:?} oob")
+    fn get_map_string_w_cheats(&self) -> String {
+        self.spaces
+            .iter()
+            .map(|r| {
+                r.iter()
+                    .map(|s| {
+                        if s.get_c() != ' ' {
+                            s.get_c()
+                        } else {
+                            s.get_k()
+                        }
+                    })
+                    .join("")
+            })
+            .join("\n")
+    }
+    fn reset(&self) {
+        for r in &self.spaces {
+            for s in r {
+                s.reset_min_steps_and_cheat();
+            }
         }
     }
-    fn get_steps_s_to_e_cheat_pos(&self, c1: Pos, c2: Pos) -> Option<usize> {
-        let mut old = Vec::new();
-        for (p, c) in [(c1, '1'), (c2, '2')] {
-            self.panic_oob_pos(&p);
-            let k = self.spaces[p.y][p.x].get_k();
-            self.spaces[p.y][p.x].set_k(c);
-            old.push((p, k));
+    fn get_steps_s_to_e(&self, do_print: bool, do_ind: bool) -> Option<(usize, String)> {
+        if let Some(start) = self.start.upgrade() {
+            if let Some(ret) = start.step(0, ' ', do_print, do_ind) {
+                let map = self.get_map_string_w_cheats();
+                self.reset();
+                return Some((ret, map));
+            }
         }
-        println!("{}", self.get_map_string());
-        let s = self.get_steps_s_to_e(false, false);
-        old.into_iter().for_each(|(p, c)| self.spaces[p.y][p.x].set_k(c));
-        s
+        self.reset();
+        None
     }
-    fn get_steps_s_to_e_cheat(&self, c1: Weak<Space>, c2: Weak<Space>) -> Option<usize> {
-        let mut old = Vec::new();
+    fn get_steps_s_to_e_cheat_pos(&self, c1: Pos, c2: Pos) -> Option<(usize, String)> {
+        for (Pos { x, y }, c) in [(c1, '1'), (c2, '2')] {
+            if x >= self.width || y >= self.height {
+                self.reset();
+                return None;
+            }
+            self.spaces[y][x].set_c(c);
+        }
+        self.get_steps_s_to_e(false, false)
+    }
+    fn get_steps_s_to_e_cheat(&self, c1: Weak<Space>, c2: Weak<Space>) -> Option<(usize, String)> {
         for (s, c) in [(c1, '1'), (c2, '2')] {
-            let s = s.upgrade()?;
-            let k = s.get_k();
-            s.set_k(c);
-            old.push((s, k));
+            if let Some(s) = s.upgrade() {
+                s.set_c(c);
+            } else {
+                self.reset();
+                return None;
+            }
         }
-        let s = self.get_steps_s_to_e(false, false);
-        old.into_iter().for_each(|(s, c)| s.set_k(c));
-        s
+        self.get_steps_s_to_e(false, false)
+    }
+    fn get_steps_with_cheats(&self) -> HashMap<Option<isize>, usize> {
+        let (base, map) = self.get_steps_s_to_e(false, false).unwrap();
+        let mut v = Vec::new();
+        for r in &self.spaces {
+            for s in r {
+                v.push(self.get_steps_s_to_e_cheat(s.get_w(), s.get_r()));
+                v.push(self.get_steps_s_to_e_cheat(s.get_w(), s.get_d()));
+                v.push(self.get_steps_s_to_e_cheat(s.get_w(), s.get_l()));
+                v.push(self.get_steps_s_to_e_cheat(s.get_w(), s.get_u()));
+            }
+        }
+        v.sort();
+
+        println!("{map}");
+        for (v, s) in v.iter().flatten() {
+            if v == &20 {
+                println!("{s}");
+            }
+        }
+        v.into_iter().map(|c| c.map(|c| c.0)).map(|c| c.map(|c| base as isize - c as isize)).counts()
     }
 }
 fn run1() {
     let s = Instant::now();
     let m = Map::new(e1());
-    let h = m.height;
-    let w = m.width;
-    let c = h * w;
-    // let steps = m.get_steps_s_to_e(true, false); // 5s (in release mode)
-    // let steps = m.get_steps_s_to_e(false, false); // 11ms (in release mode)
-
-    // let steps = m.get_steps_s_to_e_cheat_pos(Pos { x: 8, y: 1 }, Pos { x: 9, y: 1 }); //72
-    // let steps = m.get_steps_s_to_e_cheat_pos(Pos { x: 10, y: 7 }, Pos { x: 11, y: 7 }); //64
-
-    let steps = m.get_steps_s_to_e_cheat(m.spaces[1][8].get_w(), m.spaces[1][9].get_w()); //72
-    // let steps = m.get_steps_s_to_e_cheat(m.spaces[7][10].get_w(), m.spaces[7][11].get_w()); //64
-    println!("{w}x{h} {c} {:?} {:?}", steps, s.elapsed());
+    let steps = m.get_steps_with_cheats();
+    println!("{:?}", s.elapsed());
+    for (&s, &c) in steps.iter().sorted_by_key(|&(s, _)| s) {
+        println!("{c:<3} saved {s:?}");
+    }
 }
 fn run_with_big_stack_and_wait(f: fn()) {
     thread::Builder::new()
@@ -359,7 +436,55 @@ mod test {
     #[test]
     fn e1_s_to_e() {
         let m = Map::new(e1());
-        assert_eq!(Some(84), m.get_steps_s_to_e(false, false));
+        assert_eq!(84, m.get_steps_s_to_e(false, false).unwrap().0);
+    }
+    #[test]
+    fn e1_cheat_pos1() {
+        let m = Map::new(e1());
+        assert_eq!(
+            72,
+            m.get_steps_s_to_e_cheat_pos(Pos { x: 8, y: 1 }, Pos { x: 9, y: 1 }).unwrap().0
+        );
+    }
+    #[test]
+    fn e1_cheat_pos2() {
+        let m = Map::new(e1());
+        assert_eq!(
+            64,
+            m.get_steps_s_to_e_cheat_pos(Pos { x: 10, y: 7 }, Pos { x: 11, y: 7 }).unwrap().0
+        );
+    }
+    #[test]
+    fn e1_cheat1() {
+        let m = Map::new(e1());
+        assert_eq!(
+            72,
+            m.get_steps_s_to_e_cheat(m.spaces[1][8].get_w(), m.spaces[1][8].get_r()).unwrap().0
+        );
+    }
+    #[test]
+    fn e1_cheat2() {
+        let m = Map::new(e1());
+        assert_eq!(
+            64,
+            m.get_steps_s_to_e_cheat(m.spaces[7][10].get_w(), m.spaces[7][10].get_r()).unwrap().0
+        );
+    }
+    #[test]
+    fn e1_cheat3() {
+        let m = Map::new(e1());
+        assert_eq!(
+            46,
+            m.get_steps_s_to_e_cheat(m.spaces[8][8].get_w(), m.spaces[8][8].get_d()).unwrap().0
+        );
+    }
+    #[test]
+    fn e1_cheat4() {
+        let m = Map::new(e1());
+        assert_eq!(
+            20,
+            m.get_steps_s_to_e_cheat(m.spaces[7][6].get_w(), m.spaces[7][6].get_l()).unwrap().0
+        );
     }
     #[test]
     fn d_s_to_e() {
@@ -367,6 +492,6 @@ mod test {
             let m = Map::new(d());
             m.get_steps_s_to_e(false, false)
         });
-        assert_eq!(Some(9348), res);
+        assert_eq!(9348, res.unwrap().0);
     }
 }
