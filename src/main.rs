@@ -276,6 +276,39 @@ impl Map {
             })
             .join("\n")
     }
+    fn get_map_string_w_num(&self) -> String {
+        const DEF_COLORS: &str = "\x1b[38;2;217;217;217m\x1b[48;2;0;0;0m";
+        DEF_COLORS.to_owned()
+            + &self
+                .spaces
+                .iter()
+                .map(|r| {
+                    r.iter()
+                        .map(|s| {
+                            if s.get_k() == '#' {
+                                "██████".to_owned()
+                            } else {
+                                let (pre, suf) = if s.at_start() || s.at_end() {
+                                    ("\x1b[48;2;0;255;0m\x1b[38;2;0;0;0m", DEF_COLORS)
+                                } else {
+                                    ("", "")
+                                };
+                                format!("{pre}{:^6}{suf}", s.get_min_steps_to())
+                            }
+                        })
+                        .join("")
+                })
+                .join("\n")
+    }
+    fn change_steps_from_s_to_steps_from_e(&self) {
+        let e = self.end.upgrade().unwrap().get_min_steps_to();
+        for r in &self.spaces {
+            for s in r {
+                let n = e - s.get_min_steps_to();
+                s.set_min_steps(n);
+            }
+        }
+    }
     fn reset(&self) {
         for r in &self.spaces {
             for s in r {
@@ -284,15 +317,19 @@ impl Map {
         }
     }
     fn get_steps_s_to_e(&self, do_print: bool, do_ind: bool) -> Option<(usize, String)> {
+        let res = self.get_steps_s_to_e_no_reset(do_print, do_ind);
+        self.reset();
+        res
+    }
+    fn get_steps_s_to_e_no_reset(&self, do_print: bool, do_ind: bool) -> Option<(usize, String)> {
         if let Some(start) = self.start.upgrade() {
             if let Some(ret) = start.step(0, ' ', do_print, do_ind) {
                 // let map = self.get_map_string_w_cheats();
                 let map = "".to_owned();
-                self.reset();
+                // println!("{map}");
                 return Some((ret, map));
             }
         }
-        self.reset();
         None
     }
     fn get_steps_s_to_e_cheat_pos(&self, c1: Pos, c2: Pos) -> Option<(usize, String)> {
@@ -331,11 +368,11 @@ impl Map {
                 return None;
             }
         }
-        println!(
-            "{},{}",
-            c1.upgrade().unwrap().get_x(),
-            c1.upgrade().unwrap().get_y()
-        );
+        // println!(
+        //     "{},{}",
+        //     c1.upgrade().unwrap().get_x(),
+        //     c1.upgrade().unwrap().get_y()
+        // );
         // println!("{}\n", self.get_map_string_w_cheats());
         self.get_steps_s_to_e(false, false)
     }
@@ -378,9 +415,11 @@ impl Map {
 }
 fn run1() {
     let s = Instant::now();
-    let m = Map::new(d());
-    let sum = m.get_count_of_cheats_that_save_at_least_100_steps();
-    println!("{sum} {:?}", s.elapsed());
+    let m = Map::new(e1());
+    let _ = m.get_steps_s_to_e_no_reset(false, false);
+    m.change_steps_from_s_to_steps_from_e();
+    let ms = m.get_map_string_w_num();
+    println!("{:?}\n{ms}", s.elapsed());
 }
 fn run_with_big_stack_and_wait(f: fn()) {
     thread::Builder::new()
