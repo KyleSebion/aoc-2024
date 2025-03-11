@@ -526,15 +526,19 @@ impl Map {
 }
 fn run1() {
     let s = Instant::now();
-    let m = Map::new(e1());
-    let _ = m.get_steps_s_to_e_no_reset(false, false);
-    let ms = m.get_map_string_w_num();
-    println!("{:?}\n{ms}", s.elapsed());
+    // let m = Map::new(e1());
+    // let _ = m.get_steps_s_to_e_no_reset(false, false);
+    // let ms = m.get_map_string_w_num();
+    // println!("{:?}\n{ms}", s.elapsed());
 
-    m.reset();
-    for cp in m.get_cheat_points(2).into_iter().filter(|cp| cp.saved > 0).sorted_by_key(|cp| cp.saved) {
-        println!("{:?}", cp);
-    }
+    // m.reset();
+    // for cp in m.get_cheat_points(2).into_iter().filter(|cp| cp.saved > 0).sorted_by_key(|cp| cp.saved) {
+    //     println!("{:?}", cp);
+    // }
+
+    let res = Map::new(d()).get_cheat_points(20).into_iter().counts_by(|c| c.saved >= 100)[&true];
+    println!("{res} {:?}", s.elapsed());
+    //3392073 too high
 
     // let ca = 6;
     // let mut cm = vec![vec![" ".to_owned(); m.width]; m.height];
@@ -762,6 +766,13 @@ mod test {
         let res = run_with_big_stack_and_wait_and_ret(|| {
             let m = Map::new(d());
             m.get_count_of_cheats_that_save_at_least_100_steps()
+        });
+        assert_eq!(1321, res);
+    }
+    #[test]
+    fn d_count2() {
+        let res = run_with_big_stack_and_wait_and_ret(|| {
+            Map::new(d()).get_cheat_points(2).into_iter().counts_by(|c| c.saved >= 100)[&true]
         });
         assert_eq!(1321, res);
     }
