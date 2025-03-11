@@ -5,6 +5,7 @@ use std::cell::Ref;
 use std::cell::RefCell;
 use std::cell::RefMut;
 use std::collections::HashMap;
+use std::collections::VecDeque;
 use std::rc::Rc;
 use std::rc::Weak;
 use std::thread;
@@ -135,6 +136,9 @@ impl Space {
     fn get_y(self: &Rc<Self>) -> usize {
         self.borrow().y
     }
+    fn get_xy(self: &Rc<Self>) -> (usize, usize) {
+        (self.get_x(), self.get_y())
+    }
     fn get_c(self: &Rc<Self>) -> char {
         self.borrow().cheat
     }
@@ -194,6 +198,12 @@ impl Space {
 struct Pos {
     x: usize,
     y: usize,
+}
+#[derive(Debug)]
+struct CheatPoints {
+    start: Pos,
+    end: Pos,
+    saved: usize,
 }
 struct Map {
     spaces: Vec<Vec<Rc<Space>>>,
@@ -412,14 +422,136 @@ impl Map {
             })
             .sum::<usize>()
     }
+    fn get_path(&self) -> VecDeque<Rc<Space>> {
+        let mut path = VecDeque::new();
+        let mut cur_or_none = self.start.upgrade();
+        let mut next_step = 0;
+        while let Some(cur) = cur_or_none {
+            next_step = cur.get_min_steps_to() + 1;
+            let next = [cur.get_r(), cur.get_d(), cur.get_l(), cur.get_u()]
+                .into_iter()
+                .filter_map(|n| n.upgrade())
+                .filter(|n| n.get_min_steps_to() == next_step)
+                .collect_vec();
+            if next.len() > 1 {
+                panic!("{:?}", next.into_iter().map(|v| v.get_xy()).collect_vec());
+            }
+            path.push_back(cur);
+            cur_or_none = next.into_iter().nth(0);
+        }
+        if next_step - 1 != self.end.upgrade().unwrap().get_min_steps_to() {
+            panic!("next_step {next_step} != end");
+        }
+        path
+    }
+    fn get_cheat_area(len: usize) -> Vec<(usize, Pos)> {
+        let mut area = Vec::new();
+        for y in 0..len {
+            for x in 0..len - y {
+                if x == 0 && y == 0 {
+                    continue;
+                }
+                let count = x + y;
+                area.push((count, Pos { x, y }));
+                area.push((
+                    count,
+                    Pos {
+                        x: usize::MIN.wrapping_sub(x),
+                        y: usize::MIN.wrapping_sub(y),
+                    },
+                ));
+                if x > 0 && y > 0 {
+                    area.push((
+                        count,
+                        Pos {
+                            x,
+                            y: usize::MIN.wrapping_sub(y),
+                        },
+                    ));
+                    area.push((
+                        count,
+                        Pos {
+                            x: usize::MIN.wrapping_sub(x),
+                            y,
+                        },
+                    ));
+                }
+            }
+        }
+        area
+    }
+    fn get_cheat_spaces(&self, c_len: usize, x: usize, y: usize) -> Vec<(usize, Rc<Space>)> {
+        Self::get_cheat_area(c_len)
+            .into_iter()
+            .filter_map(|(s, Pos { x: dx, y: dy })| {
+                let x = x.wrapping_add(dx);
+                let y = y.wrapping_add(dy);
+                if x < self.width && y < self.height {
+                    Some((s, Rc::clone(&self.spaces[y][x])))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+    fn get_cheat_points(&self, c_len: usize) -> Vec<CheatPoints> {
+        self.get_steps_s_to_e_no_reset(false, false);
+        let mut cp = Vec::new();
+        let mut path = self.get_path();
+        while let Some(p) = path.pop_front() {
+            let step_num = p.get_min_steps_to();
+            for c_start in [p.get_r(), p.get_d(), p.get_l(), p.get_u()]
+                .into_iter()
+                .filter_map(|v| v.upgrade())
+            {
+                let (c_start_x, c_start_y) = c_start.get_xy();
+                for (add_steps, c_end) in self.get_cheat_spaces(c_len, c_start_x, c_start_y) {
+                    if c_end.get_k() != '#' && c_end.get_min_steps_to() >= step_num + 1 + add_steps {
+                        // //6 < 0 + 1 + 2
+                        // //CheatPoints { start: Pos { x: 2, y: 3 }, end: Pos { x: 3, y: 3 }, saved: 8 }
+                        // if c_start_x == 2 && c_start_y == 3 && c_end.get_x() == 3 && c_end.get_y() == 3 {
+                        //     println!("start:{step_num} c_end.get_min_steps_to:{} add_steps:{add_steps}", c_end.get_min_steps_to());
+                        // }
+                        cp.push(CheatPoints{
+                            start: Pos { x: c_start_x, y: c_start_y },
+                            end: Pos { x: c_end.get_x(), y: c_end.get_y() },
+                            saved: c_end.get_min_steps_to() - step_num - 1 - add_steps
+                        });
+                    }
+                }
+            }
+        }
+        cp
+    }
 }
 fn run1() {
     let s = Instant::now();
     let m = Map::new(e1());
     let _ = m.get_steps_s_to_e_no_reset(false, false);
-    m.change_steps_from_s_to_steps_from_e();
     let ms = m.get_map_string_w_num();
     println!("{:?}\n{ms}", s.elapsed());
+
+    m.reset();
+    for cp in m.get_cheat_points(2).into_iter().filter(|cp| cp.saved > 0).sorted_by_key(|cp| cp.saved) {
+        println!("{:?}", cp);
+    }
+
+    // let ca = 6;
+    // let mut cm = vec![vec![" ".to_owned(); m.width]; m.height];
+    // let spx = 6;
+    // let spy = 7;
+    // cm[spy][spx] = "@".to_owned();
+    // for (s, sp) in m.get_cheat_spaces(ca, spx, spy) {
+    //     let (x, y) = sp.get_xy();
+    //     if cm[y][x] == " " {
+    //         cm[y][x] = format!(" {:<2},{:<2} ", x, y);
+    //         cm[y][x] = format!("{}", sp.get_k());
+    //     } else {
+    //         cm[y][x] = "*******".to_owned();
+    //     }
+    // }
+    // let m = cm.into_iter().map(|r| r.join("")).join("\n");
+    // println!("{m}");
 }
 fn run_with_big_stack_and_wait(f: fn()) {
     thread::Builder::new()
@@ -591,6 +723,28 @@ mod test {
             "1   saved Some(64)",
         ];
         let steps = m.get_saved_steps_with_cheats();
+        for (i, (&s, &c)) in steps.iter().sorted_by_key(|&(s, _)| s).enumerate() {
+            assert_eq!(vr[i], format!("{c:<3} saved {s:?}"));
+        }
+    }
+    #[test]
+    fn e1_all_cheats2() {
+        let m = Map::new(e1());
+        let vr = [
+            "116 saved 0",
+            "14  saved 2",
+            "14  saved 4",
+            "2   saved 6",
+            "4   saved 8",
+            "2   saved 10",
+            "3   saved 12",
+            "1   saved 20",
+            "1   saved 36",
+            "1   saved 38",
+            "1   saved 40",
+            "1   saved 64",
+        ];
+        let steps = m.get_cheat_points(2).into_iter().counts_by(|c| c.saved);
         for (i, (&s, &c)) in steps.iter().sorted_by_key(|&(s, _)| s).enumerate() {
             assert_eq!(vr[i], format!("{c:<3} saved {s:?}"));
         }
