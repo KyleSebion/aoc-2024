@@ -310,6 +310,22 @@ impl Map {
                 })
                 .join("\n")
     }
+    fn get_map_string_w_num_tab(&self) -> String {
+        self.spaces
+            .iter()
+            .map(|r| {
+                r.iter()
+                    .map(|s| {
+                        if s.get_k() == '#' {
+                            s.get_k().to_string()
+                        } else {
+                            s.get_min_steps_to().to_string()
+                        }
+                    })
+                    .join("\t")
+            })
+            .join("\n")
+    }
     fn change_steps_from_s_to_steps_from_e(&self) {
         let e = self.end.upgrade().unwrap().get_min_steps_to();
         for r in &self.spaces {
@@ -499,26 +515,42 @@ impl Map {
         let mut cp = Vec::new();
         let mut path = self.get_path();
         while let Some(p) = path.pop_front() {
+            let step0_xy = p.get_xy();
             let step_num = p.get_min_steps_to();
-            for c_start in [p.get_r(), p.get_d(), p.get_l(), p.get_u()]
+            let mut options = Vec::new();
+            for step1 in [p.get_r(), p.get_d(), p.get_l(), p.get_u()]
                 .into_iter()
                 .filter_map(|v| v.upgrade())
             {
-                let (c_start_x, c_start_y) = c_start.get_xy();
-                for (add_steps, c_end) in self.get_cheat_spaces(c_len, c_start_x, c_start_y) {
-                    if c_end.get_k() != '#' && c_end.get_min_steps_to() >= step_num + 1 + add_steps {
-                        // //6 < 0 + 1 + 2
-                        // //CheatPoints { start: Pos { x: 2, y: 3 }, end: Pos { x: 3, y: 3 }, saved: 8 }
-                        // if c_start_x == 2 && c_start_y == 3 && c_end.get_x() == 3 && c_end.get_y() == 3 {
-                        //     println!("start:{step_num} c_end.get_min_steps_to:{} add_steps:{add_steps}", c_end.get_min_steps_to());
-                        // }
-                        cp.push(CheatPoints{
-                            start: Pos { x: c_start_x, y: c_start_y },
-                            end: Pos { x: c_end.get_x(), y: c_end.get_y() },
-                            saved: c_end.get_min_steps_to() - step_num - 1 - add_steps
+                let step1_xy = step1.get_xy();
+                // if step1.get_k() != '#' {
+                //     continue;
+                // }
+                for (add_steps, c_end) in self.get_cheat_spaces(c_len, step1_xy.0, step1_xy.1) {
+                    if c_end.get_k() != '#' && c_end.get_min_steps_to() >= step_num + 1 + add_steps
+                    {
+                        options.push(CheatPoints {
+                            start: Pos {
+                                x: step0_xy.0,
+                                y: step0_xy.1,
+                            },
+                            end: Pos {
+                                x: c_end.get_x(),
+                                y: c_end.get_y(),
+                            },
+                            saved: c_end.get_min_steps_to() - step_num - 1 - add_steps,
                         });
                     }
                 }
+            }
+            for (_, group) in options
+                .into_iter()
+                .sorted_by_key(|c| (c.end.x, c.end.y))
+                .chunk_by(|c| (c.end.x, c.end.y))
+                .into_iter()
+            {
+                let max = group.max_by_key(|c| c.saved).unwrap();
+                cp.push(max);
             }
         }
         cp
@@ -526,36 +558,11 @@ impl Map {
 }
 fn run1() {
     let s = Instant::now();
-    // let m = Map::new(e1());
-    // let _ = m.get_steps_s_to_e_no_reset(false, false);
-    // let ms = m.get_map_string_w_num();
-    // println!("{:?}\n{ms}", s.elapsed());
-
-    // m.reset();
-    // for cp in m.get_cheat_points(2).into_iter().filter(|cp| cp.saved > 0).sorted_by_key(|cp| cp.saved) {
-    //     println!("{:?}", cp);
-    // }
-
-    let res = Map::new(d()).get_cheat_points(20).into_iter().counts_by(|c| c.saved >= 100)[&true];
+    let res = Map::new(d())
+        .get_cheat_points(20)
+        .into_iter()
+        .counts_by(|c| c.saved >= 100)[&true];
     println!("{res} {:?}", s.elapsed());
-    //3392073 too high
-
-    // let ca = 6;
-    // let mut cm = vec![vec![" ".to_owned(); m.width]; m.height];
-    // let spx = 6;
-    // let spy = 7;
-    // cm[spy][spx] = "@".to_owned();
-    // for (s, sp) in m.get_cheat_spaces(ca, spx, spy) {
-    //     let (x, y) = sp.get_xy();
-    //     if cm[y][x] == " " {
-    //         cm[y][x] = format!(" {:<2},{:<2} ", x, y);
-    //         cm[y][x] = format!("{}", sp.get_k());
-    //     } else {
-    //         cm[y][x] = "*******".to_owned();
-    //     }
-    // }
-    // let m = cm.into_iter().map(|r| r.join("")).join("\n");
-    // println!("{m}");
 }
 fn run_with_big_stack_and_wait(f: fn()) {
     thread::Builder::new()
@@ -735,7 +742,7 @@ mod test {
     fn e1_all_cheats2() {
         let m = Map::new(e1());
         let vr = [
-            "116 saved 0",
+            "83  saved 0",
             "14  saved 2",
             "14  saved 4",
             "2   saved 6",
@@ -752,6 +759,34 @@ mod test {
         for (i, (&s, &c)) in steps.iter().sorted_by_key(|&(s, _)| s).enumerate() {
             assert_eq!(vr[i], format!("{c:<3} saved {s:?}"));
         }
+    }
+    #[test]
+    fn e1_all_cheats_p2() {
+        let need = "\
+There are 32 cheats that save 50 picoseconds.
+There are 31 cheats that save 52 picoseconds.
+There are 29 cheats that save 54 picoseconds.
+There are 39 cheats that save 56 picoseconds.
+There are 25 cheats that save 58 picoseconds.
+There are 23 cheats that save 60 picoseconds.
+There are 20 cheats that save 62 picoseconds.
+There are 19 cheats that save 64 picoseconds.
+There are 12 cheats that save 66 picoseconds.
+There are 14 cheats that save 68 picoseconds.
+There are 12 cheats that save 70 picoseconds.
+There are 22 cheats that save 72 picoseconds.
+There are 4 cheats that save 74 picoseconds.
+There are 3 cheats that save 76 picoseconds.";
+        let res = Map::new(e1())
+            .get_cheat_points(20)
+            .iter()
+            .counts_by(|c| c.saved)
+            .into_iter()
+            .filter(|v| v.0 >= 50)
+            .sorted_by_key(|v| v.0)
+            .map(|v| format!("There are {} cheats that save {} picoseconds.", v.1, v.0))
+            .join("\n");
+        assert_eq!(need, res);
     }
     #[test]
     fn d_s_to_e() {
@@ -772,8 +807,21 @@ mod test {
     #[test]
     fn d_count2() {
         let res = run_with_big_stack_and_wait_and_ret(|| {
-            Map::new(d()).get_cheat_points(2).into_iter().counts_by(|c| c.saved >= 100)[&true]
+            Map::new(d())
+                .get_cheat_points(2)
+                .into_iter()
+                .counts_by(|c| c.saved >= 100)[&true]
         });
         assert_eq!(1321, res);
+    }
+    #[test]
+    fn d_count_p2() {
+        let res = run_with_big_stack_and_wait_and_ret(|| {
+            Map::new(d())
+                .get_cheat_points(20)
+                .into_iter()
+                .counts_by(|c| c.saved >= 100)[&true]
+        });
+        assert_eq!(971737, res);
     }
 }
