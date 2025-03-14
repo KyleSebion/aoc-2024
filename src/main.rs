@@ -122,7 +122,7 @@ fn main() {
 mod test {
     use super::*;
     #[test]
-    fn dir_pad_1() {
+    fn reduce_dir_pad_1() {
         assert_eq!(
             "v<<A>>^A<A>AvA<^AA>A<vAAA>^A",
             Pad::new(PadType::Dir).reduce_seq_val(
@@ -131,29 +131,29 @@ mod test {
         );
     }
     #[test]
-    fn dir_pad_2() {
+    fn reduce_dir_pad_2() {
         assert_eq!(
             "<A^A>^^AvvvA",
             Pad::new(PadType::Dir).reduce_seq_val("v<<A>>^A<A>AvA<^AA>A<vAAA>^A")
         );
     }
     #[test]
-    fn dir_pad_3() {
+    fn reduce_dir_pad_3() {
         assert_eq!(
             "<A^A>^^AvvvA",
             Pad::reduce_seq_dir("v<<A>>^A<A>AvA<^AA>A<vAAA>^A")
         );
     }
     #[test]
-    fn num_pad_1() {
+    fn reduce_num_pad_1() {
         assert_eq!("029A", Pad::new(PadType::Num).reduce_seq_val("<A^A>^^AvvvA"));
     }
     #[test]
-    fn num_pad_2() {
+    fn reduce_num_pad_2() {
         assert_eq!("029A", Pad::reduce_seq_num("<A^A>^^AvvvA"));
     }
     #[test]
-    fn combo_1() {
+    fn reduce_combo_1() {
         assert_eq!(
             "029A",
             Pad::reduce_seq_dir_n_then_num(
@@ -163,7 +163,7 @@ mod test {
         );
     }
     #[test]
-    fn combo_2() {
+    fn reduce_combo_2() {
         assert_eq!(
             "980A",
             Pad::reduce_seq_dir_n_then_num(
@@ -173,7 +173,7 @@ mod test {
         );
     }
     #[test]
-    fn combo_3() {
+    fn reduce_combo_3() {
         assert_eq!(
             "179A",
             Pad::reduce_seq_dir_n_then_num(
@@ -183,7 +183,7 @@ mod test {
         );
     }
     #[test]
-    fn combo_4() {
+    fn reduce_combo_4() {
         assert_eq!(
             "456A",
             Pad::reduce_seq_dir_n_then_num(
@@ -193,7 +193,7 @@ mod test {
         );
     }
     #[test]
-    fn combo_5() {
+    fn reduce_combo_5() {
         assert_eq!(
             "379A",
             Pad::reduce_seq_dir_n_then_num(
