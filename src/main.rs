@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 use itertools::Itertools;
+use itertools::FoldWhile::{Continue, Done};
 
 const fn e1() -> &'static str {
     "\
@@ -114,13 +115,15 @@ impl Pad {
         let goes_oob = self.goes_out_of_bounds(self.y, to_x);
         let dx = Self::get_dir_str(self.x, to_x, '>', '<');
         let dy = Self::get_dir_str(self.y, to_y, 'v', '^');
-        self.x = to_x;
-        self.y = to_y;
-        if goes_oob {
-            dy + &dx + "A"
+        // self.x = to_x; // use self.reduce_seq_val instead to trigger oob check
+        // self.y = to_y;
+        let seq = if goes_oob {
+            dy + &dx
         } else {
-            dx + &dy + "A"
-        }
+            dx + &dy
+        } + "A";
+        self.reduce_seq_val(&DirSeq::new(&seq)); // instead of changing self.x and self.y directly so that oob can be detected
+        seq
     }
     fn expand_dir_seq_val(&mut self, seq: &DirSeq) -> String {
         seq.v.chars().map(|c| self.expand(c)).join("")
@@ -145,12 +148,18 @@ impl Pad {
         let res = Self::expand_seq_num(seq);
         Self::expand_seq_dir_n(&DirSeq::new(&res), n)
     }
+    fn expand_multi_seq(seqs: &[&str]) -> String {
+        seqs.iter().map(|&seq| Self::expand_seq_dir(&DirSeq::new(seq))).join(" ")
+    }
     fn validate(&self) {
         if self.x >= self.pad[0].len() {
             panic!("bad x: {}", self.x);
         }
         if self.y >= self.pad.len() {
             panic!("bad y: {}", self.y);
+        }
+        if self.get_pad_val() == ' ' {
+            panic!("oob");
         }
     }
     fn reduce(&mut self, dir: char) {
@@ -201,29 +210,93 @@ impl Pad {
     }
 }
 
+fn get_dir_variations(v: char, h: char) -> Vec<String> {
+    (1..).fold_while(Vec::new(), |mut acc, size| {
+        let vari = get_dir_variations_at_size(v, h, size);
+        if vari.is_empty() {
+            Done(acc)
+        } else {
+            acc.extend(vari);
+            Continue(acc)
+        }
+    }).into_inner()
+}
+fn get_dir_variations_at_size(v: char, h: char, size: usize) -> Vec<String> {
+    let pos = [v, h, h];
+    pos.into_iter().permutations(size).unique().map(|c| c.into_iter().collect::<String>() + "A").collect()
+}
+fn get_dir_variations_at_sizes(v: char, h: char, v_size: usize, h_size: usize) -> Vec<String> {
+    let mut pos = vec![v; v_size];
+    pos.extend(vec![h; h_size]);
+    pos.into_iter().permutations(h_size + v_size).unique().map(|c| c.into_iter().collect::<String>() + "A").collect()
+}
+
+fn merge_combos(mut vs: Vec<Vec<String>>) -> Vec<String> {
+    let mut nv = vec!["".to_owned()];
+    while let Some(vp) = vs.pop() {
+        let mut nnv = Vec::new();
+        for ns in vp {
+            for os in &nv {
+                nnv.push(format!("{ns}{os}"));
+            }
+        }
+        nv = nnv;
+    }
+    nv
+}
+fn code_to_dirs(code: &str) -> Vec<String> {
+    let mut r = Pad::new(PadType::Num);
+    merge_combos(code.chars().map(|c| char_to_dirs(c, &mut r)).collect())
+}
+fn dirs_to_dirs(dirs: Vec<String>) -> Vec<String>{
+    dirs.into_iter().flat_map(|dir| dir_to_dirs(&dir)).collect()
+}
+fn dir_to_dirs(dir: &str) -> Vec<String> {
+    let mut r = Pad::new(PadType::Dir);
+    merge_combos(dir.chars().map(|c| char_to_dirs(c, &mut r)).collect())
+}
+fn char_to_dirs(c: char, r: &mut Pad) -> Vec<String> {
+    let (to_x, to_y) = r.hm[&c];
+    let h = if r.x > to_x { '<' } else { '>' };
+    let v = if r.y > to_y { '^' } else { 'v' };
+    let dx = to_x.abs_diff(r.x);
+    let dy = to_y.abs_diff(r.y);
+    let vs = get_dir_variations_at_sizes(v, h, dy, dx).into_iter().filter(|seq| {
+        let mut x = r.x;
+        let mut y = r.y;
+        let sp = r.hm[&' '];
+        for c in seq.chars() {
+            match c {
+                '>' => x += 1,
+                '<' => x -= 1,
+                '^' => y -= 1,
+                'v' => y += 1,
+                'A' => {},
+                _ => panic!("no")
+            }
+            if (x, y) == sp {
+                return false;
+            }
+        }
+        true
+    }).collect_vec();
+    if vs.is_empty() { panic!("vs.is_empty"); }
+    r.x = to_x;
+    r.y = to_y;
+    vs
+}
+fn get_min_len_code_dir(code: &str) -> usize {
+    dirs_to_dirs(dirs_to_dirs(code_to_dirs(code))).into_iter().map(|dir| dir.len()).min().expect("get_min_len_code_dir")
+}
+fn get_code_complexity2(code: &str) -> usize {
+    get_min_len_code_dir(code) * NumSeq::new(code).parse_to_num()
+}
+fn get_codes_complexity2(codes: &str) -> usize {
+    codes.lines().map(get_code_complexity2).sum()
+}
 fn main() {
-    println!("1 {}", Pad::expand_seq_num_then_dir_n(&NumSeq::new("179A"), 2));
-    // have: 1 <<vAA>A>^AAvA<^A>AvA^A<<vA>>^AAvA^A<vA>^AA<A>A<<vA>A>^AAAvA<^A>A  before oob change
-    // have: 1 v<<A>>^A<vA<A>>^AAvAA<^A>Av<<A>>^AAvA^A<vA>^AA<A>Av<<A>A>^AAAvA<^A>A  after oob change
-    // need:   <v<A>>^A<vA<A>>^AAvAA<^A>A<v<A>>^AAvA^A<vA>^AA<A>A<v<A>A>^AAAvA<^A>A
-
-    println!("2 {}", Pad::expand_seq_num(&NumSeq::new("179A"))); // 2 <<^A ^^A >>A vvvA
-    println!("3 {}", Pad::expand_seq_dir(&DirSeq::new("<<^A^^A>>AvvvA"))); // 3 <<vAA>^A>A<AA>AvAA^A<vAAA>^A
-    println!("4 {}", Pad::expand_seq_dir(&DirSeq::new("<<vAA>^A>A<AA>AvAA^A<vAAA>^A"))); // 4 <<vAA>A>^AAvA<^A>AvA^A<<vA>>^AAvA^A<vA>^AA<A>A<<vA>A>^AAAvA<^A>A
-
-    println!("5b {}", Pad::reduce_seq_dir(&DirSeq::new("<<vAA>A>^AAvA<^A>AvA^A<<vA>>^AAvA^A<vA>^AA<A>A<<vA>A>^AAAvA<^A>A")));        // 5b <<vAA>^A>A<AA>AvAA^A<vAAA>^A
-                                                                                                                                     //       <<^A^^A>>AvvvA
-                                                                                                                                     //    << results in hover over space
-                                                                                                                                     //    needs to be v<<A
-    println!("5g {}", Pad::reduce_seq_dir(&DirSeq::new("<v<A>>^A<vA<A>>^AAvAA<^A>A<v<A>>^AAvA^A<vA>^AA<A>A<v<A>A>^AAAvA<^A>A")));    // 5g <A v<A A >>^A <AA>AvAA^A<vAAA>^A
-                                                                                                                                     //     ^   < <    A  ^^ A >> A  vvv  A
-    println!("6b {}", Pad::reduce_seq_dir(&DirSeq::new("<<vAA>^A>A<AA>AvAA^A<vAAA>^A")));    // 6b <<^A^^A>>AvvvA
-    println!("6g {}", Pad::reduce_seq_dir(&DirSeq::new("<Av<AA>>^A<AA>AvAA^A<vAAA>^A")));    // 6g ^<<A^^A>>AvvvA
-
-    println!("7b {}", Pad::expand_seq_dir(&DirSeq::new("<")));    // <<vA
-
-    println!("{}", Pad::get_codes_complexity(d()));
-    // 179008 too high
+    println!("START");
+    println!("END");
 }
 
 #[cfg(test)]
@@ -381,6 +454,26 @@ mod test {
         assert_eq!(64, Pad::expand_seq_num_then_dir_n(&NumSeq::new("379A"), 2).len());
     }
     #[test]
+    fn code_1_len() {
+        assert_eq!(68, get_min_len_code_dir("029A"));
+    }
+    #[test]
+    fn code_2_len() {
+        assert_eq!(60, get_min_len_code_dir("980A"));
+    }
+    #[test]
+    fn code_3_len() {
+        assert_eq!(68, get_min_len_code_dir("179A"));
+    }
+    #[test]
+    fn code_4_len() {
+        assert_eq!(64, get_min_len_code_dir("456A"));
+    }
+    #[test]
+    fn code_5_len() {
+        assert_eq!(64, get_min_len_code_dir("379A"));
+    }
+    #[test]
     fn get_code_complexity_1() {
         assert_eq!(68 * 29, Pad::get_code_complexity(&NumSeq::new("029A")));
     }
@@ -404,6 +497,15 @@ mod test {
     fn get_codes_complexity_e1() {
         assert_eq!(68 * 29 + 60 * 980 + 68 * 179 + 64 * 456 + 64 * 379, 126384);
         assert_eq!(68 * 29 + 60 * 980 + 68 * 179 + 64 * 456 + 64 * 379, Pad::get_codes_complexity(e1()));
+    }
+    #[test]
+    fn get_codes_complexity2_e1() {
+        assert_eq!(68 * 29 + 60 * 980 + 68 * 179 + 64 * 456 + 64 * 379, 126384);
+        assert_eq!(68 * 29 + 60 * 980 + 68 * 179 + 64 * 456 + 64 * 379, get_codes_complexity2(e1()));
+    }
+    #[test]
+    fn get_codes_complexity2_d() {
+        assert_eq!(174124, get_codes_complexity2(d()));
     }
     #[test]
     fn parse_numseq_1() {
