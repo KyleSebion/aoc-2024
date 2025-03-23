@@ -1,8 +1,9 @@
 #![allow(dead_code)]
 
-use std::collections::HashMap;
-use itertools::Itertools;
 use itertools::FoldWhile::{Continue, Done};
+use itertools::Itertools;
+use std::collections::HashMap;
+use std::time::Instant;
 
 const fn e1() -> &'static str {
     "\
@@ -18,22 +19,29 @@ const fn d() -> &'static str {
 }
 
 struct NumSeq<'a> {
-    v: &'a str
+    v: &'a str,
 }
 impl<'a> NumSeq<'a> {
     fn new(seq: &'a str) -> Self {
-        if seq.chars().all(|c| ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A'].contains(&c)) {
+        if seq
+            .chars()
+            .all(|c| ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A'].contains(&c))
+        {
             Self { v: seq }
         } else {
             panic!("invalid NumSeq: {seq}");
         }
     }
     fn parse_to_num(&self) -> usize {
-        self.v.trim_start_matches('0').trim_end_matches('A').parse().expect("parse_to_num failed")
+        self.v
+            .trim_start_matches('0')
+            .trim_end_matches('A')
+            .parse()
+            .expect("parse_to_num failed")
     }
 }
 struct DirSeq<'a> {
-    v: &'a str
+    v: &'a str,
 }
 impl<'a> DirSeq<'a> {
     fn new(seq: &'a str) -> Self {
@@ -68,10 +76,7 @@ impl Pad {
                     ('v', (1, 1)),
                     ('>', (2, 1)),
                 ]),
-                pad: vec![
-                    vec![' ', '^', 'A'],
-                    vec!['<', 'v', '>']
-                ],
+                pad: vec![vec![' ', '^', 'A'], vec!['<', 'v', '>']],
             },
             PadType::Num => Self {
                 x: 2,
@@ -117,11 +122,7 @@ impl Pad {
         let dy = Self::get_dir_str(self.y, to_y, 'v', '^');
         // self.x = to_x; // use self.reduce_seq_val instead to trigger oob check
         // self.y = to_y;
-        let seq = if goes_oob {
-            dy + &dx
-        } else {
-            dx + &dy
-        } + "A";
+        let seq = if goes_oob { dy + &dx } else { dx + &dy } + "A";
         self.reduce_seq_val(&DirSeq::new(&seq)); // instead of changing self.x and self.y directly so that oob can be detected
         seq
     }
@@ -149,7 +150,9 @@ impl Pad {
         Self::expand_seq_dir_n(&DirSeq::new(&res), n)
     }
     fn expand_multi_seq(seqs: &[&str]) -> String {
-        seqs.iter().map(|&seq| Self::expand_seq_dir(&DirSeq::new(seq))).join(" ")
+        seqs.iter()
+            .map(|&seq| Self::expand_seq_dir(&DirSeq::new(seq)))
+            .join(" ")
     }
     fn validate(&self) {
         if self.x >= self.pad[0].len() {
@@ -176,7 +179,8 @@ impl Pad {
         self.pad[self.y][self.x]
     }
     fn reduce_seq_val(&mut self, seq: &DirSeq) -> String {
-        seq.v.split_terminator('A')
+        seq.v
+            .split_terminator('A')
             .map(|sub| {
                 for dir in sub.chars() {
                     self.reduce(dir);
@@ -206,31 +210,49 @@ impl Pad {
         Pad::expand_seq_num_then_dir_n(code, 2).len() * code.parse_to_num()
     }
     fn get_codes_complexity(codes: &str) -> usize {
-        codes.lines().map(|code| Self::get_code_complexity(&NumSeq::new(code))).sum()
+        codes
+            .lines()
+            .map(|code| Self::get_code_complexity(&NumSeq::new(code)))
+            .sum()
     }
 }
 
 fn get_dir_variations(v: char, h: char) -> Vec<String> {
-    (1..).fold_while(Vec::new(), |mut acc, size| {
-        let vari = get_dir_variations_at_size(v, h, size);
-        if vari.is_empty() {
-            Done(acc)
-        } else {
-            acc.extend(vari);
-            Continue(acc)
-        }
-    }).into_inner()
+    (1..)
+        .fold_while(Vec::new(), |mut acc, size| {
+            let vari = get_dir_variations_at_size(v, h, size);
+            if vari.is_empty() {
+                Done(acc)
+            } else {
+                acc.extend(vari);
+                Continue(acc)
+            }
+        })
+        .into_inner()
 }
 fn get_dir_variations_at_size(v: char, h: char, size: usize) -> Vec<String> {
     let pos = [v, h, h];
-    pos.into_iter().permutations(size).unique().map(|c| c.into_iter().collect::<String>() + "A").collect()
+    pos.into_iter()
+        .permutations(size)
+        .unique()
+        .map(|c| c.into_iter().collect::<String>() + "A")
+        .collect()
 }
 fn get_dir_variations_at_sizes(v: char, h: char, v_size: usize, h_size: usize) -> Vec<String> {
     let mut pos = vec![v; v_size];
     pos.extend(vec![h; h_size]);
-    pos.into_iter().permutations(h_size + v_size).unique().map(|c| c.into_iter().collect::<String>() + "A").collect()
+    pos.into_iter()
+        .permutations(h_size + v_size)
+        .unique()
+        .map(|c| c.into_iter().collect::<String>() + "A")
+        .collect()
 }
 
+fn get_smallest_strings(vs: Vec<String>) -> Vec<String> {
+    // let min = vs.iter().map(|s| s.len()).min().unwrap();
+    // vs.into_iter().filter(|s| s.len() == min).collect_vec()
+    vs
+}
 fn merge_combos(mut vs: Vec<Vec<String>>) -> Vec<String> {
     let mut nv = vec!["".to_owned()];
     while let Some(vp) = vs.pop() {
@@ -246,14 +268,22 @@ fn merge_combos(mut vs: Vec<Vec<String>>) -> Vec<String> {
 }
 fn code_to_dirs(code: &str) -> Vec<String> {
     let mut r = Pad::new(PadType::Num);
-    merge_combos(code.chars().map(|c| char_to_dirs(c, &mut r)).collect())
+    get_smallest_strings(merge_combos(
+        code.chars().map(|c| char_to_dirs(c, &mut r)).collect(),
+    ))
 }
-fn dirs_to_dirs(dirs: Vec<String>) -> Vec<String>{
-    dirs.into_iter().flat_map(|dir| dir_to_dirs(&dir)).collect()
+fn dirs_to_dirs(dirs: Vec<String>) -> Vec<String> {
+    get_smallest_strings(
+        dirs.into_iter()
+            .flat_map(|dir| dir_to_dirs(&dir))
+            .collect_vec(),
+    )
 }
 fn dir_to_dirs(dir: &str) -> Vec<String> {
     let mut r = Pad::new(PadType::Dir);
-    merge_combos(dir.chars().map(|c| char_to_dirs(c, &mut r)).collect())
+    get_smallest_strings(merge_combos(
+        dir.chars().map(|c| char_to_dirs(c, &mut r)).collect(),
+    ))
 }
 fn char_to_dirs(c: char, r: &mut Pad) -> Vec<String> {
     let (to_x, to_y) = r.hm[&c];
@@ -261,32 +291,41 @@ fn char_to_dirs(c: char, r: &mut Pad) -> Vec<String> {
     let v = if r.y > to_y { '^' } else { 'v' };
     let dx = to_x.abs_diff(r.x);
     let dy = to_y.abs_diff(r.y);
-    let vs = get_dir_variations_at_sizes(v, h, dy, dx).into_iter().filter(|seq| {
-        let mut x = r.x;
-        let mut y = r.y;
-        let sp = r.hm[&' '];
-        for c in seq.chars() {
-            match c {
-                '>' => x += 1,
-                '<' => x -= 1,
-                '^' => y -= 1,
-                'v' => y += 1,
-                'A' => {},
-                _ => panic!("no")
+    let vs = get_dir_variations_at_sizes(v, h, dy, dx)
+        .into_iter()
+        .filter(|seq| {
+            let mut x = r.x;
+            let mut y = r.y;
+            let sp = r.hm[&' '];
+            for c in seq.chars() {
+                match c {
+                    '>' => x += 1,
+                    '<' => x -= 1,
+                    '^' => y -= 1,
+                    'v' => y += 1,
+                    'A' => {}
+                    _ => panic!("no"),
+                }
+                if (x, y) == sp {
+                    return false;
+                }
             }
-            if (x, y) == sp {
-                return false;
-            }
-        }
-        true
-    }).collect_vec();
-    if vs.is_empty() { panic!("vs.is_empty"); }
+            true
+        })
+        .collect_vec();
+    if vs.is_empty() {
+        panic!("vs.is_empty");
+    }
     r.x = to_x;
     r.y = to_y;
-    vs
+    get_smallest_strings(vs)
 }
 fn get_min_len_code_dir(code: &str) -> usize {
-    dirs_to_dirs(dirs_to_dirs(code_to_dirs(code))).into_iter().map(|dir| dir.len()).min().expect("get_min_len_code_dir")
+    dirs_to_dirs(dirs_to_dirs(code_to_dirs(code)))
+        .into_iter()
+        .map(|dir| dir.len())
+        .min()
+        .expect("get_min_len_code_dir")
 }
 fn get_code_complexity2(code: &str) -> usize {
     get_min_len_code_dir(code) * NumSeq::new(code).parse_to_num()
@@ -294,9 +333,57 @@ fn get_code_complexity2(code: &str) -> usize {
 fn get_codes_complexity2(codes: &str) -> usize {
     codes.lines().map(get_code_complexity2).sum()
 }
+fn print_movements() {
+    let mut bt = std::collections::BTreeMap::new();
+    for start in "<>^vA".chars() {
+        for end in "<>^vA".chars() {
+            let mut r = Pad::new(PadType::Dir);
+            let (x, y) = r.hm[&start];
+            r.x = x;
+            r.y = y;
+            let mut res = char_to_dirs(end, &mut r);
+            res.sort();
+            bt.insert((start, end), res);
+        }
+    }
+    for (k, v) in bt {
+        println!("{k:?} {v:?}");
+    }
+
+    let mut bt = std::collections::BTreeMap::new();
+    for start in "01234567890A".chars() {
+        for end in "01234567890A".chars() {
+            let mut r = Pad::new(PadType::Num);
+            let (x, y) = r.hm[&start];
+            r.x = x;
+            r.y = y;
+            let mut res = char_to_dirs(end, &mut r);
+            res.sort();
+            bt.insert((start, end), res);
+        }
+    }
+    for (k, v) in bt {
+        println!("({k:?}, vec!{v:?}),");
+    }
+    
+    const WIDTH: usize = 9;
+    for vi in [">vA", "v>A"] {
+        let mut r = Pad::new(PadType::Dir);
+        print!("{:^WIDTH$}", format!("A{vi}"));
+        for mut vvi in vi.chars().map(|c| char_to_dirs(c, &mut r)) {
+            vvi.sort();
+            print!("{:^WIDTH$}", vvi.join("|"));
+        }
+        println!();
+    }
+} 
 fn main() {
-    println!("START");
-    println!("END");
+    // let s = Instant::now();
+    // println!("START");
+    // get_codes_complexity2(d());
+    // println!("{:?} END", s.elapsed());
+
+    print_movements();
 }
 
 #[cfg(test)]
@@ -306,9 +393,9 @@ mod test {
     fn reduce_dir_pad_1() {
         assert_eq!(
             "v<<A>>^A<A>AvA<^AA>A<vAAA>^A",
-            Pad::new(PadType::Dir).reduce_seq_val(
-                &DirSeq::new("<vA<AA>>^AvAA<^A>A<v<A>>^AvA^A<vA>^A<v<A>^A>AAvA^A<v<A>A>^AAAvA<^A>A")
-            )
+            Pad::new(PadType::Dir).reduce_seq_val(&DirSeq::new(
+                "<vA<AA>>^AvAA<^A>A<v<A>>^AvA^A<vA>^A<v<A>^A>AAvA^A<v<A>A>^AAAvA<^A>A"
+            ))
         );
     }
     #[test]
@@ -327,7 +414,10 @@ mod test {
     }
     #[test]
     fn reduce_num_pad_1() {
-        assert_eq!("029A", Pad::new(PadType::Num).reduce_seq_val(&DirSeq::new("<A^A>^^AvvvA")));
+        assert_eq!(
+            "029A",
+            Pad::new(PadType::Num).reduce_seq_val(&DirSeq::new("<A^A>^^AvvvA"))
+        );
     }
     #[test]
     fn reduce_num_pad_2() {
@@ -338,7 +428,9 @@ mod test {
         assert_eq!(
             "029A",
             Pad::reduce_seq_dir_n_then_num(
-                &DirSeq::new("<vA<AA>>^AvAA<^A>A<v<A>>^AvA^A<vA>^A<v<A>^A>AAvA^A<v<A>A>^AAAvA<^A>A"),
+                &DirSeq::new(
+                    "<vA<AA>>^AvAA<^A>A<v<A>>^AvA^A<vA>^A<v<A>^A>AAvA^A<v<A>A>^AAAvA<^A>A"
+                ),
                 2
             )
         );
@@ -358,7 +450,9 @@ mod test {
         assert_eq!(
             "179A",
             Pad::reduce_seq_dir_n_then_num(
-                &DirSeq::new("<v<A>>^A<vA<A>>^AAvAA<^A>A<v<A>>^AAvA^A<vA>^AA<A>A<v<A>A>^AAAvA<^A>A"),
+                &DirSeq::new(
+                    "<v<A>>^A<vA<A>>^AAvAA<^A>A<v<A>>^AAvA^A<vA>^AA<A>A<v<A>A>^AAAvA<^A>A"
+                ),
                 2
             )
         );
@@ -387,71 +481,71 @@ mod test {
     fn expand_combo_1() {
         assert_eq!(
             "<vA<AA>>^AvAA<^A>Av<<A>>^AvA^A<vA>^Av<<A>^A>AAvA^Av<<A>A>^AAAvA<^A>A",
-            Pad::expand_seq_num_then_dir_n(
-                &NumSeq::new("029A"),
-                2
-            )
+            Pad::expand_seq_num_then_dir_n(&NumSeq::new("029A"), 2)
         );
     }
     #[test]
     fn expand_combo_2() {
         assert_eq!(
             "v<<A>>^AAAvA^A<vA<AA>>^AvAA<^A>Av<<A>A>^AAAvA<^A>A<vA>^A<A>A",
-            Pad::expand_seq_num_then_dir_n(
-                &NumSeq::new("980A"),
-                2
-            )
+            Pad::expand_seq_num_then_dir_n(&NumSeq::new("980A"), 2)
         );
     }
     #[test]
     fn expand_combo_3() {
         assert_eq!(
             "v<<A>>^A<vA<A>>^AAvAA<^A>Av<<A>>^AAvA^A<vA>^AA<A>Av<<A>A>^AAAvA<^A>A",
-            Pad::expand_seq_num_then_dir_n(
-                &NumSeq::new("179A"),
-                2
-            )
+            Pad::expand_seq_num_then_dir_n(&NumSeq::new("179A"), 2)
         );
     }
     #[test]
     fn expand_combo_4() {
         assert_eq!(
             "v<<A>>^AA<vA<A>>^AAvAA<^A>A<vA>^A<A>A<vA>^A<A>Av<<A>A>^AAvA<^A>A",
-            Pad::expand_seq_num_then_dir_n(
-                &NumSeq::new("456A"),
-                2
-            )
+            Pad::expand_seq_num_then_dir_n(&NumSeq::new("456A"), 2)
         );
     }
     #[test]
     fn expand_combo_5() {
         assert_eq!(
             "v<<A>>^AvA^A<vA<AA>>^AAvA<^A>AAvA^A<vA>^AA<A>Av<<A>A>^AAAvA<^A>A",
-            Pad::expand_seq_num_then_dir_n(
-                &NumSeq::new("379A"),
-                2
-            )
+            Pad::expand_seq_num_then_dir_n(&NumSeq::new("379A"), 2)
         );
     }
     #[test]
     fn expand_combo_1_len() {
-        assert_eq!(68, Pad::expand_seq_num_then_dir_n(&NumSeq::new("029A"), 2).len());
+        assert_eq!(
+            68,
+            Pad::expand_seq_num_then_dir_n(&NumSeq::new("029A"), 2).len()
+        );
     }
     #[test]
     fn expand_combo_2_len() {
-        assert_eq!(60, Pad::expand_seq_num_then_dir_n(&NumSeq::new("980A"), 2).len());
+        assert_eq!(
+            60,
+            Pad::expand_seq_num_then_dir_n(&NumSeq::new("980A"), 2).len()
+        );
     }
     #[test]
     fn expand_combo_3_len() {
-        assert_eq!(68, Pad::expand_seq_num_then_dir_n(&NumSeq::new("179A"), 2).len());
+        assert_eq!(
+            68,
+            Pad::expand_seq_num_then_dir_n(&NumSeq::new("179A"), 2).len()
+        );
     }
     #[test]
     fn expand_combo_4_len() {
-        assert_eq!(64, Pad::expand_seq_num_then_dir_n(&NumSeq::new("456A"), 2).len());
+        assert_eq!(
+            64,
+            Pad::expand_seq_num_then_dir_n(&NumSeq::new("456A"), 2).len()
+        );
     }
     #[test]
     fn expand_combo_5_len() {
-        assert_eq!(64, Pad::expand_seq_num_then_dir_n(&NumSeq::new("379A"), 2).len());
+        assert_eq!(
+            64,
+            Pad::expand_seq_num_then_dir_n(&NumSeq::new("379A"), 2).len()
+        );
     }
     #[test]
     fn code_1_len() {
@@ -496,12 +590,18 @@ mod test {
     #[test]
     fn get_codes_complexity_e1() {
         assert_eq!(68 * 29 + 60 * 980 + 68 * 179 + 64 * 456 + 64 * 379, 126384);
-        assert_eq!(68 * 29 + 60 * 980 + 68 * 179 + 64 * 456 + 64 * 379, Pad::get_codes_complexity(e1()));
+        assert_eq!(
+            68 * 29 + 60 * 980 + 68 * 179 + 64 * 456 + 64 * 379,
+            Pad::get_codes_complexity(e1())
+        );
     }
     #[test]
     fn get_codes_complexity2_e1() {
         assert_eq!(68 * 29 + 60 * 980 + 68 * 179 + 64 * 456 + 64 * 379, 126384);
-        assert_eq!(68 * 29 + 60 * 980 + 68 * 179 + 64 * 456 + 64 * 379, get_codes_complexity2(e1()));
+        assert_eq!(
+            68 * 29 + 60 * 980 + 68 * 179 + 64 * 456 + 64 * 379,
+            get_codes_complexity2(e1())
+        );
     }
     #[test]
     fn get_codes_complexity2_d() {
