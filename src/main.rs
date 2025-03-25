@@ -1,6 +1,9 @@
 #![allow(dead_code)]
 
-use std::{collections::{HashMap, HashSet}, time::Instant};
+use std::{
+    collections::{HashMap, HashSet},
+    time::Instant,
+};
 
 use itertools::Itertools;
 
@@ -71,7 +74,11 @@ fn get_combos_t_count(d: &str) -> usize {
     for l in d.lines() {
         let mut d = false;
         for (a, b) in l.split("-").tuple_windows() {
-            if !d { d = true; } else { panic!("too many tuple_windows; expected 1; 2nd: ({a},{b})"); }
+            if !d {
+                d = true;
+            } else {
+                panic!("too many tuple_windows; expected 1; 2nd: ({a},{b})");
+            }
             map.entry(a).or_insert(HashSet::new()).insert(b);
             map.entry(b).or_insert(HashSet::new()).insert(a);
         }
