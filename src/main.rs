@@ -90,11 +90,8 @@ fn get_combos_t_count(d: &str) -> usize {
         .filter(|&(a, b, c)| {
             (a.starts_with("t") || b.starts_with("t") || c.starts_with("t"))
                 && map[a].contains(b)
-                && map[a].contains(c)
-                && map[b].contains(a)
                 && map[b].contains(c)
                 && map[c].contains(a)
-                && map[c].contains(b)
         })
         .count()
 }
