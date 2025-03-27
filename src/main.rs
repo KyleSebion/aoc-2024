@@ -109,7 +109,7 @@ fn get_combos_t_count(d: &str) -> usize {
     }
     map.retain(|k, v| k.starts_with("t") || v.iter().any(|v| v.starts_with("t")));
     map.keys()
-        .cloned()
+        .copied()
         .tuple_combinations()
         .filter(|&(a, b, c)| {
             (a.starts_with("t") || b.starts_with("t") || c.starts_with("t"))
@@ -153,20 +153,20 @@ fn get_biggest_groups(d: &str) -> Vec<String> {
         let mut group = BTreeMap::new();
         let mut skip_list = BTreeSet::new();
         for ms_front in groups[prev_i].keys() {
-            skip_list.extend(ms_front.iter().cloned());
+            skip_list.extend(ms_front.iter().copied());
             for ms_next in groups[prev_i][ms_front]
                 .iter()
-                .cloned()
+                .copied()
                 .filter(|&v| !skip_list.contains(v))
             {
                 let ms_next_set = BTreeSet::from_iter([ms_next]);
                 let fn_combined = ms_front
                     .union(&ms_next_set)
-                    .cloned()
+                    .copied()
                     .collect::<BTreeSet<_>>();
                 let fn_common = groups[prev_i][ms_front]
                     .intersection(&groups[k1_i][&ms_next_set])
-                    .cloned()
+                    .copied()
                     .collect::<BTreeSet<_>>();
                 let combined_in_common =
                     fn_combined.intersection(&fn_common).count() == fn_combined.len();
