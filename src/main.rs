@@ -189,7 +189,7 @@ fn get_biggest_groups(d: &str) -> Vec<String> {
 fn main() {
     let s = Instant::now();
     println!("START");
-    println!("{:?}", get_biggest_groups(d()));
+    println!("{:?}", get_biggest_groups(d())); // <80ms in release mode
     // println!("{}", get_combos_t_count(d()));
     println!("END {:?}", s.elapsed());
 }
