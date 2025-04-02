@@ -1,0 +1,8 @@
+[package]
+name = "cuda"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+chrono = "0.4.39"
+cudarc = { version = "0.13.7", features = ["cuda-version-from-build-system"] }
