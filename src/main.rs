@@ -160,7 +160,7 @@ mod test {
     #[test] fn e1_b10_3() { let b = get_stepped_bot(e1(), 10, 3); assert_eq!((8, 2), (b.x, b.y)) }
     #[test] fn e1_b10_4() { let b = get_stepped_bot(e1(), 10, 4); assert_eq!((10, 6), (b.x, b.y)) }
     #[test] fn e1_b10_5() { let b = get_stepped_bot(e1(), 10, 5); assert_eq!((1, 3), (b.x, b.y)) }
-    #[test] fn e1_100_str() { assert_eq!(e1_100(), get_stepped_bots_map(e1(), 100)) }
+    #[test] fn e1_100_str() { assert_eq!(e1_100().replace(".", " "), get_stepped_bots_map(e1(), 100)) }
     #[test] fn e1_100_safety() { assert_eq!(12, get_stepped_bots_safety(e1(), 100)) }
     #[test] fn d1_100_safety() { assert_eq!(224438715, get_stepped_bots_safety(d(), 100)) }
 }
