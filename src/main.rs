@@ -6,7 +6,7 @@ fn ex1() -> &'static str {
     "125 17"
 }
 fn data() -> &'static str {
-    "510613 358 84 40702 4373582 2 0 1584"
+    include_str!("input.txt")
 }
 struct Stones {
     line: Vec<usize>,
