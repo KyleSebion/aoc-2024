@@ -111,7 +111,7 @@ fn run(
         } else {
             ip += 2;
         }
-        if ip >= instrs.len() {
+        if ip >= instrs.len() - 1 {
             break;
         }
     }
