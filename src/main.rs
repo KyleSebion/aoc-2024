@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
-use std::collections::{BTreeMap, BTreeSet};
 use itertools::Itertools;
+use std::collections::{BTreeMap, BTreeSet};
 
 fn e1() -> &'static str {
     "\
@@ -143,7 +143,7 @@ impl RegProg {
             a: regs[0],
             b: regs[1],
             c: regs[2],
-            instrs
+            instrs,
         }
     }
     fn run(&self, cache: &mut BTreeMap<BTreeSet<usize>, String>) -> (usize, usize, usize, String) {
