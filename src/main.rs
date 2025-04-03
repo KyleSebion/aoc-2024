@@ -158,13 +158,13 @@ fn main() {
 #[cfg(test)] #[rustfmt::skip]
 mod test {
     use super::*;
-    #[test] fn p1_e1() { assert_eq!((0, 1, 9, "".to_string()), RegProg::new(e1()).run(&mut BTreeMap::new())); }
-    #[test] fn p1_e2() { assert_eq!((10, 0, 0, "0,1,2".to_string()), RegProg::new(e2()).run(&mut BTreeMap::new())); }
-    #[test] fn p1_e3() { assert_eq!((0, 0, 0, "4,2,5,6,7,7,7,7,3,1,0".to_string()), RegProg::new(e3()).run(&mut BTreeMap::new())); }
-    #[test] fn p1_e4() { assert_eq!((0, 26, 0, "".to_string()), RegProg::new(e4()).run(&mut BTreeMap::new())); }
-    #[test] fn p1_e5() { assert_eq!((0, 44354, 43690, "".to_string()), RegProg::new(e5()).run(&mut BTreeMap::new())); }
-    #[test] fn p1_e6() { assert_eq!((0, 0, 0, "4,6,3,5,6,3,5,2,1,0".to_string()), RegProg::new(e6()).run(&mut BTreeMap::new())); }
-    #[test] fn p1_d() { assert_eq!((0, 1, 0, "6,5,4,7,1,6,0,3,1".to_string()), RegProg::new(d()).run(&mut BTreeMap::new())); }
+    #[test] fn p1_e1() { assert_eq!(RegProg::new(e1()).run(&mut BTreeMap::new()), (0, 1, 9, "".to_string())); }
+    #[test] fn p1_e2() { assert_eq!(RegProg::new(e2()).run(&mut BTreeMap::new()), (10, 0, 0, "0,1,2".to_string())); }
+    #[test] fn p1_e3() { assert_eq!(RegProg::new(e3()).run(&mut BTreeMap::new()), (0, 0, 0, "4,2,5,6,7,7,7,7,3,1,0".to_string())); }
+    #[test] fn p1_e4() { assert_eq!(RegProg::new(e4()).run(&mut BTreeMap::new()), (0, 26, 0, "".to_string())); }
+    #[test] fn p1_e5() { assert_eq!(RegProg::new(e5()).run(&mut BTreeMap::new()), (0, 44354, 43690, "".to_string())); }
+    #[test] fn p1_e6() { assert_eq!(RegProg::new(e6()).run(&mut BTreeMap::new()), (0, 0, 0, "4,6,3,5,6,3,5,2,1,0".to_string())); }
+    #[test] fn p1_d()  { assert_eq!(RegProg::new( d()).run(&mut BTreeMap::new()), (0, 1, 0, "6,5,4,7,1,6,0,3,1".to_string())); }
     // #[test] fn p2_e7() { let (a, b) = run_override_2str(e7(), 117440); assert_eq!(a, b); }
     // #[test] fn p2_e7_2() { assert_eq!(117440, find_override_linear(e7())); }
 }
