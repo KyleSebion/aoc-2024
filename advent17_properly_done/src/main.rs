@@ -72,7 +72,9 @@ fn d() -> &'static str {
 fn d2() -> &'static str {
     include_str!("input2.txt")
 }
-
+fn d3() -> &'static str {
+    include_str!("input3.txt")
+}
 const fn combo<'a>(op: &'a usize, a: &'a usize, b: &'a usize, c: &'a usize) -> &'a usize {
     match op {
         0..=3 => op,
@@ -243,4 +245,5 @@ mod test {
     #[test] fn p1_d_man() { assert_eq!(input_manual_jit_run(44348299), (0, 1, 0, "6,5,4,7,1,6,0,3,1".to_string())); }
     #[test] fn p2_d()  { assert_eq!(get_reg_a_for_matching_prog( d()), Some(106086382266778)); }
     #[test] fn p2_d2() { assert_eq!(get_reg_a_for_matching_prog(d2()), Some(107413700225434)); }
+    #[test] fn p2_d3() { assert_eq!(get_reg_a_for_matching_prog(d3()), Some(202797954918051)); }
 }
