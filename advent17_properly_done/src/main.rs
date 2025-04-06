@@ -192,7 +192,6 @@ fn testing_theory(mag: usize) {
     if !bads.is_empty() {
         panic!("failed; found bads: {bads:?}");
     }
-    println!("bads {bads:?}");
 }
 fn get_reg_a_for_matching_prog(d: &str) -> Option<usize> {
     const BASE: usize = 8;
@@ -216,11 +215,7 @@ fn get_reg_a_for_matching_prog(d: &str) -> Option<usize> {
                 }
             }
         }
-        if curr_pres.is_empty() {
-            return None;
-        } else {
-            last_pres = curr_pres;
-        }
+        last_pres = curr_pres;
     }
     last_pres.into_iter().next()
 }
