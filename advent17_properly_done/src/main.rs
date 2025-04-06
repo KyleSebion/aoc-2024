@@ -69,6 +69,9 @@ Program: 0,3,5,4,3,0
 fn d() -> &'static str {
     include_str!("input.txt")
 }
+fn d2() -> &'static str {
+    include_str!("input2.txt")
+}
 
 const fn combo<'a>(op: &'a usize, a: &'a usize, b: &'a usize, c: &'a usize) -> &'a usize {
     match op {
@@ -236,6 +239,8 @@ mod test {
     #[test] fn p1_e5() { assert_eq!(RegProg::new(e5()).run(), (0, 44354, 43690, "".to_string())); }
     #[test] fn p1_e6() { assert_eq!(RegProg::new(e6()).run(), (0, 0, 0, "4,6,3,5,6,3,5,2,1,0".to_string())); }
     #[test] fn p1_d()  { assert_eq!(RegProg::new( d()).run(), (0, 1, 0, "6,5,4,7,1,6,0,3,1".to_string())); }
+    #[test] fn p1_d2() { assert_eq!(RegProg::new(d2()).run(), (0, 0, 0, "3,5,0,1,5,1,5,1,0".to_string())); }
     #[test] fn p1_d_man() { assert_eq!(input_manual_jit_run(44348299), (0, 1, 0, "6,5,4,7,1,6,0,3,1".to_string())); }
-    #[test] fn p2_d() { assert_eq!(get_reg_a_for_matching_prog(d()), Some(106086382266778)); }
+    #[test] fn p2_d()  { assert_eq!(get_reg_a_for_matching_prog( d()), Some(106086382266778)); }
+    #[test] fn p2_d2() { assert_eq!(get_reg_a_for_matching_prog(d2()), Some(107413700225434)); }
 }
