@@ -180,12 +180,6 @@ fn testing_theory(mag: usize) {
             sub_c_cache.push(c_res.next().unwrap());
             if let Some(check_char) = c_res.nth(1) {
                 let expect_char = char_cache[p_mag - 1][(i - p_pow) / POW];
-                println!(
-                    "{i_res} {} {} {}",
-                    expect_char,
-                    check_char,
-                    expect_char == check_char
-                );
                 if expect_char != check_char {
                     bads.push(format!("{i}: {i_res} {} != {}", check_char, expect_char));
                 }
