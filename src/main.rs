@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use itertools::Itertools;
-use std::collections::{BTreeMap, BTreeSet};
+use std::time::Instant;
 
 fn e1() -> &'static str {
     "\
@@ -80,13 +80,7 @@ const fn combo<'a>(op: &'a usize, a: &'a usize, b: &'a usize, c: &'a usize) -> &
         _ => panic!("??"),
     }
 }
-fn run(
-    instrs: &[usize],
-    a: usize,
-    b: usize,
-    c: usize,
-    _: &mut BTreeMap<BTreeSet<usize>, String>,
-) -> (usize, usize, usize, String) {
+fn run(instrs: &[usize], a: usize, b: usize, c: usize) -> (usize, usize, usize, String) {
     let mut out = String::new();
     let mut ip = 0;
     let mut a = a;
@@ -146,25 +140,113 @@ impl RegProg {
             instrs,
         }
     }
-    fn run(&self, cache: &mut BTreeMap<BTreeSet<usize>, String>) -> (usize, usize, usize, String) {
-        run(&self.instrs, self.a, self.b, self.c, cache)
+    fn run(&self) -> (usize, usize, usize, String) {
+        run(&self.instrs, self.a, self.b, self.c)
     }
 }
+fn input_manual_jit_run(a: usize) -> (usize, usize, usize, String) {
+    let mut out = String::new();
+    let mut a = a;
+    let mut b;
+    loop {
+        b = a & 0b111 ^ 0b011 ^ (a >> (a & 0b111 ^ 0b101));
+        out.push(((b & 0b111) as u8 | 0x30) as char);
+        a >>= 3;
+        if a == 0 {
+            break;
+        }
+    }
+    (a, b, 0, out.chars().join(","))
+}
+fn testing_theory(mag: usize) {
+    const POW: usize = 8;
+    const BITS: usize = POW.trailing_zeros() as usize;
+    let mut rp = RegProg::new(d());
+    rp.b = 0;
+    rp.c = 0;
+    let mut full_cache = Vec::new();
+    let mut char_cache: Vec<Vec<char>> = Vec::new(); // why do i need to annotate this!?
+    let mut bads = Vec::new();
+    for c_mag in 1..=mag {
+        let p_mag = c_mag - 1;
+        let mut sub_f_cache = Vec::new();
+        let mut sub_c_cache = Vec::new();
+        let p_pow = POW.pow(p_mag as u32);
+        let c_pow = POW.pow(c_mag as u32);
+        for i in p_pow..c_pow {
+            rp.a = i;
+            let i_res = rp.run().3;
+            let mut c_res = i_res.chars();
+            sub_c_cache.push(c_res.next().unwrap());
+            if let Some(check_char) = c_res.nth(1) {
+                let expect_char = char_cache[p_mag - 1][(i - p_pow) / POW];
+                println!(
+                    "{i_res} {} {} {}",
+                    expect_char,
+                    check_char,
+                    expect_char == check_char
+                );
+                if expect_char != check_char {
+                    bads.push(format!("{i}: {i_res} {} != {}", check_char, expect_char));
+                }
+            }
+            sub_f_cache.push(i_res);
+        }
+        char_cache.push(sub_c_cache);
+        full_cache.push(sub_f_cache);
+    }
+    if !bads.is_empty() {
+        panic!("failed; found bads: {bads:?}");
+    }
+    println!("bads {bads:?}");
+}
+fn get_reg_a_for_matching_prog(d: &str) -> Option<usize> {
+    const BASE: usize = 8;
+    const BITS: usize = BASE.trailing_zeros() as usize;
+    let mut last_pres = vec![0];
+    let mut rp = RegProg::new(d);
+    rp.b = 0;
+    rp.c = 0;
+    for pow in 0..rp.instrs.len() {
+        let mut curr_pres = Vec::new();
+        let need = rp.instrs.iter().nth_back(pow)?.to_string();
+        for pre in last_pres {
+            for suf in 0..BASE {
+                let reg_a = (pre << BITS) | suf;
+                rp.a = reg_a;
+                let res = rp.run().3;
+                // let res = input_manual_jit_run(reg_a).3; // ~50% faster (~1.5 ms to ~1 ms)
+                let first = res.chars().next()?.to_string();
+                if first == need {
+                    curr_pres.push(reg_a);
+                }
+            }
+        }
+        if curr_pres.is_empty() {
+            return None;
+        } else {
+            last_pres = curr_pres;
+        }
+    }
+    last_pres.into_iter().next()
+}
 fn main() {
-    let mut cache = BTreeMap::new();
-    println!("{:?}", RegProg::new(d()).run(&mut cache));
+    println!("START");
+    let s = Instant::now();
+    println!("{:?}", get_reg_a_for_matching_prog(d()));
+    println!("END {:?}", s.elapsed());
 }
 
 #[cfg(test)] #[rustfmt::skip]
 mod test {
     use super::*;
-    #[test] fn p1_e1() { assert_eq!(RegProg::new(e1()).run(&mut BTreeMap::new()), (0, 1, 9, "".to_string())); }
-    #[test] fn p1_e2() { assert_eq!(RegProg::new(e2()).run(&mut BTreeMap::new()), (10, 0, 0, "0,1,2".to_string())); }
-    #[test] fn p1_e3() { assert_eq!(RegProg::new(e3()).run(&mut BTreeMap::new()), (0, 0, 0, "4,2,5,6,7,7,7,7,3,1,0".to_string())); }
-    #[test] fn p1_e4() { assert_eq!(RegProg::new(e4()).run(&mut BTreeMap::new()), (0, 26, 0, "".to_string())); }
-    #[test] fn p1_e5() { assert_eq!(RegProg::new(e5()).run(&mut BTreeMap::new()), (0, 44354, 43690, "".to_string())); }
-    #[test] fn p1_e6() { assert_eq!(RegProg::new(e6()).run(&mut BTreeMap::new()), (0, 0, 0, "4,6,3,5,6,3,5,2,1,0".to_string())); }
-    #[test] fn p1_d()  { assert_eq!(RegProg::new( d()).run(&mut BTreeMap::new()), (0, 1, 0, "6,5,4,7,1,6,0,3,1".to_string())); }
-    // #[test] fn p2_e7() { let (a, b) = run_override_2str(e7(), 117440); assert_eq!(a, b); }
-    // #[test] fn p2_e7_2() { assert_eq!(117440, find_override_linear(e7())); }
+    #[test] fn p1_e1() { assert_eq!(RegProg::new(e1()).run(), (0, 1, 9, "".to_string())); }
+    #[test] fn p1_e2() { assert_eq!(RegProg::new(e2()).run(), (10, 0, 0, "0,1,2".to_string())); }
+    #[test] fn p1_e3() { assert_eq!(RegProg::new(e3()).run(), (0, 0, 0, "4,2,5,6,7,7,7,7,3,1,0".to_string())); }
+    #[test] fn p1_e4() { assert_eq!(RegProg::new(e4()).run(), (0, 26, 0, "".to_string())); }
+    #[test] fn p1_e5() { assert_eq!(RegProg::new(e5()).run(), (0, 44354, 43690, "".to_string())); }
+    #[test] fn p1_e6() { assert_eq!(RegProg::new(e6()).run(), (0, 0, 0, "4,6,3,5,6,3,5,2,1,0".to_string())); }
+    #[test] fn p1_d()  { assert_eq!(RegProg::new( d()).run(), (0, 1, 0, "6,5,4,7,1,6,0,3,1".to_string())); }
+    #[test] fn p1_d_man() { assert_eq!(input_manual_jit_run(44348299), (0, 1, 0, "6,5,4,7,1,6,0,3,1".to_string())); }
+    #[test] fn p2_d() { assert_eq!(get_reg_a_for_matching_prog(d()), Some(106086382266778)); }
 }
