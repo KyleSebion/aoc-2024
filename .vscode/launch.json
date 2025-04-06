@@ -7,15 +7,15 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'advent17_returnofthecache'",
+            "name": "Debug executable 'advent17_properly_done'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=advent17_returnofthecache",
-                    "--package=advent17_returnofthecache"
+                    "--bin=advent17_properly_done",
+                    "--package=advent17_properly_done"
                 ],
                 "filter": {
-                    "name": "advent17_returnofthecache",
+                    "name": "advent17_properly_done",
                     "kind": "bin"
                 }
             },
@@ -25,16 +25,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'advent17_returnofthecache'",
+            "name": "Debug unit tests in executable 'advent17_properly_done'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=advent17_returnofthecache",
-                    "--package=advent17_returnofthecache"
+                    "--bin=advent17_properly_done",
+                    "--package=advent17_properly_done"
                 ],
                 "filter": {
-                    "name": "advent17_returnofthecache",
+                    "name": "advent17_properly_done",
                     "kind": "bin"
                 }
             },
