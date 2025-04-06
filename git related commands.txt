@@ -1,5 +1,5 @@
 #based on https://stackoverflow.com/a/14470212/25551356
-git commit --allow-empty -m "init"
-function dodir($c) { git remote add -f --tags "$c" "C:\Users\kyle\source\repos\a\$c"; git merge --allow-unrelated-histories -m "merge $c" "$c/master"; mkdir "$c"; dir | ? Name -notmatch advent | %{ git mv $_.Name "$c" }; git commit -m "move $c files into subdir"; git remote remove "$c" }
+# for a new repo: git commit --allow-empty -m "init"
+function dodir($c) { git remote add -f --tags "$c" "C:\Users\kyle\source\repos\a\$c"; git merge --allow-unrelated-histories -m "merge $c" "$c/master"; mkdir "$c"; dir | ? Name -notmatch 'advent|README.md|git related' | %{ git mv $_.Name "$c" }; git commit -m "move $c files into subdir"; git remote remove "$c" }
 dodir advent1
 git push
