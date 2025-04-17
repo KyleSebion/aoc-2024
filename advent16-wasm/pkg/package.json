@@ -1,0 +1,15 @@
+{
+  "name": "advent16-wasm",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "advent16_wasm_bg.wasm",
+    "advent16_wasm.js",
+    "advent16_wasm.d.ts"
+  ],
+  "main": "advent16_wasm.js",
+  "types": "advent16_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
