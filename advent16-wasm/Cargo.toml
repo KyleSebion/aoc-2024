@@ -1,0 +1,15 @@
+[package]
+name = "advent16-wasm"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+console_error_panic_hook = "0.1.7"
+itertools = "0.14.0"
+js-sys = "0.3.77"
+num-traits = "0.2.19"
+wasm-bindgen = "0.2.100"
+web-sys = { version = "0.3.77", features = ["Document", "Window", "Node", "Element", "HtmlElement", "ResizeObserver", "ResizeObserverEntry", "ResizeObserverSize", "console", "CanvasRenderingContext2d", "HtmlCanvasElement", "Performance"] }
