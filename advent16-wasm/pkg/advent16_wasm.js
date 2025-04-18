@@ -244,6 +244,9 @@ async function __wbg_load(module, imports) {
 function __wbg_get_imports() {
     const imports = {};
     imports.wbg = {};
+    imports.wbg.__wbg_beginPath_0198cb08b8521814 = function(arg0) {
+        arg0.beginPath();
+    };
     imports.wbg.__wbg_blockSize_1490803190b57a34 = function(arg0) {
         const ret = arg0.blockSize;
         return ret;
@@ -273,6 +276,9 @@ function __wbg_get_imports() {
     };
     imports.wbg.__wbg_fillRect_c38d5d56492a2368 = function(arg0, arg1, arg2, arg3, arg4) {
         arg0.fillRect(arg1, arg2, arg3, arg4);
+    };
+    imports.wbg.__wbg_fill_34096e49d2aaa307 = function(arg0) {
+        arg0.fill();
     };
     imports.wbg.__wbg_getContext_e9cf379449413580 = function() { return handleError(function (arg0, arg1, arg2) {
         const ret = arg0.getContext(getStringFromWasm0(arg1, arg2));
@@ -348,8 +354,14 @@ function __wbg_get_imports() {
         const ret = arg0.length;
         return ret;
     };
+    imports.wbg.__wbg_lineTo_2fc468a0e2210784 = function(arg0, arg1, arg2) {
+        arg0.lineTo(arg1, arg2);
+    };
     imports.wbg.__wbg_log_c222819a41e063d3 = function(arg0) {
         console.log(arg0);
+    };
+    imports.wbg.__wbg_moveTo_123c5e7629da2e1e = function(arg0, arg1, arg2) {
+        arg0.moveTo(arg1, arg2);
     };
     imports.wbg.__wbg_new_5f34cc0c99fcc488 = function() { return handleError(function (arg0) {
         const ret = new ResizeObserver(arg0);
@@ -423,11 +435,11 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper93 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper98 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 23, __wbg_adapter_18);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper94 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper99 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 23, __wbg_adapter_21);
         return ret;
     };

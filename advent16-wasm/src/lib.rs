@@ -1,5 +1,5 @@
 pub mod advent16;
-use advent16::{Kind, Map, Pos, Vrd, d};
+use advent16::{Kind, Map, Vrd, d};
 use core::f64;
 use itertools::Itertools;
 use js_sys::Array;
@@ -104,12 +104,12 @@ fn start_animation() {
     let outer_fn = inner_fn.clone();
     *outer_fn.borrow_mut() = Some(Closure::new(move || {
         let mut req_af = true;
-        let mut g = GLOBAL.lock().expect("closure > GLOBAL.lock()");
-        const MS_P_F: f64 = 10.;
+        let mut g = GLOBAL.lock().expect("closure -> GLOBAL.lock()");
+        const MS_P_F: f64 = 25.;
         let sf = g.frame;
         let ef = ((get_now() - g.start) / MS_P_F) as usize;
         let c = ef - sf;
-        if c > 1 {
+        if c > usize::MAX - 1 {
             log!("skipping {}", (sf..ef).take(c - 1).join(","));
         }
         for _ in sf..ef {
@@ -139,12 +139,12 @@ fn start_animation() {
     }));
     GLOBAL
         .lock()
-        .expect("start_animation > GLOBAL.lock()")
+        .expect("start_animation -> GLOBAL.lock()")
         .start = get_now();
     request_animation_frame(outer_fn.borrow().as_ref().expect("outer_fn"));
 }
 fn draw() {
-    let g = GLOBAL.lock().expect("draw > GLOBAL.lock()");
+    let g = GLOBAL.lock().expect("draw -> GLOBAL.lock()");
     let (canvas, c) = get_canvas_and_ctx();
     let space_height = canvas.height() as f64 / g.map.m.len() as f64;
     let space_width = canvas.width() as f64 / g.map.m[0].len() as f64;
@@ -158,17 +158,7 @@ fn draw() {
             };
             // traveled
             if (1..usize::MAX).contains(&sp.c) && !matches!(sp.k, Kind::End) {
-                color = "#7F7FFF";
-            }
-            // reindeer
-            if g.rs
-                .as_ref()
-                .expect("draw rs")
-                .iter()
-                .any(|(r, _)| r.p.x == x && r.p.y == y)
-                && (Pos { x, y }) != g.map.e
-            {
-                color = "#F00";
+                color = "#338";
             }
             c.set_fill_style_str(color);
             c.fill_rect(
@@ -178,5 +168,26 @@ fn draw() {
                 space_height,
             );
         }
+    }
+    // reindeer
+    let space_half_width = space_width / 2.;
+    let space_half_height = space_height / 2.;
+    c.set_fill_style_str("#F00");
+    for (r, _) in g.rs.as_ref().expect("draw rs") {
+        if r.p == g.map.e {
+            continue;
+        }
+        let xl = r.p.x as f64 * space_width;
+        let xm = xl + space_half_width;
+        let xr = xl + space_width;
+        let yt = r.p.y as f64 * space_height;
+        let ym = yt + space_half_height;
+        let yb = yt + space_height;
+        c.begin_path();
+        c.move_to(xl, ym);
+        c.line_to(xm, yt);
+        c.line_to(xr, ym);
+        c.line_to(xm, yb);
+        c.fill();
     }
 }

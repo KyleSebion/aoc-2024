@@ -1,5 +1,5 @@
-use std::collections::VecDeque;
 use itertools::Itertools;
+use std::collections::VecDeque;
 pub fn d() -> &'static str {
     include_str!("input.txt")
 }
@@ -59,7 +59,7 @@ pub struct Reindeer {
 }
 impl Reindeer {
     fn new(p: &Pos) -> Self {
-        let mut s =        Self {
+        let mut s = Self {
             p: Pos { x: p.x, y: p.y },
             d: Dir::RIGHT,
             t: 0,
@@ -156,6 +156,11 @@ impl Map {
         }
     }
     pub fn best_seats(&self, rs: &Vrd) -> usize {
-        rs.iter().min_set_by_key(|(r, _)| r.cost()).iter().flat_map(|(r, _)| r.path.clone()).unique().count()
+        rs.iter()
+            .min_set_by_key(|(r, _)| r.cost())
+            .iter()
+            .flat_map(|(r, _)| r.path.clone())
+            .unique()
+            .count()
     }
 }
