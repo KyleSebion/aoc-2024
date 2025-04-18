@@ -105,7 +105,8 @@ fn start_animation() {
     *outer_fn.borrow_mut() = Some(Closure::new(move || {
         let mut req_af = true;
         let mut g = GLOBAL.lock().expect("closure -> GLOBAL.lock()");
-        const MS_P_F: f64 = 25.;
+        const FPS: f64 = 60.;
+        const MS_P_F: f64 = 1000. / FPS;
         let sf = g.frame;
         let ef = ((get_now() - g.start) / MS_P_F) as usize;
         let c = ef - sf;
@@ -130,7 +131,9 @@ fn start_animation() {
         }
         g.frame = ef;
         drop(g);
-        draw();
+        if c > 0 {
+            draw();
+        }
         if req_af {
             request_animation_frame(inner_fn.borrow().as_ref().expect("inner_fn"));
         } else {
