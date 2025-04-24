@@ -47,6 +47,14 @@ fn get_2d_ctx() -> Option<CanvasRenderingContext2d> {
         .dyn_into::<CanvasRenderingContext2d>()
         .ok()
 }
+fn request_animation_frame(f: &Closure<dyn FnMut()>) -> Option<i32> {
+    let w = get_window()?;
+    w.request_animation_frame(f.as_ref().dyn_ref()?).ok()
+}
+fn get_now() -> Option<f64> {
+    Some(get_window()?.performance()?.now())
+}
+
 fn setup_resizer() -> Option<()> {
     let closure = Closure::<dyn FnMut(_)>::new({
         move |a: Array| {
@@ -72,7 +80,6 @@ fn setup_resizer() -> Option<()> {
     closure.forget();
     Some(())
 }
-
 struct GlobalData {
     map: Map,
     rs: Option<Vrd>,
@@ -87,13 +94,6 @@ static GLOBAL: LazyLock<Mutex<GlobalData>> = LazyLock::new(|| {
         frame: 0,
     })
 });
-fn request_animation_frame(f: &Closure<dyn FnMut()>) -> Option<i32> {
-    let w = get_window()?;
-    w.request_animation_frame(f.as_ref().dyn_ref()?).ok()
-}
-fn get_now() -> Option<f64> {
-    Some(get_window()?.performance()?.now())
-}
 fn start_animation() -> Option<()> {
     let inner_fn = Rc::new(RefCell::new(None));
     let outer_fn = inner_fn.clone();
